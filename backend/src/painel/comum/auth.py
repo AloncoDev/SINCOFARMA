@@ -31,6 +31,8 @@ PERMISSOES: dict[str, frozenset[str]] = {
     "responder_encaminhamento": frozenset({"medico"}),
     # cadastrar pessoas, trocar perfil e farmácia, desativar, resetar MFA
     "gerenciar_usuarios": frozenset({"admin"}),
+    # cadastrar farmácias e ajustar nome e metas; a lista mostra só números agregados
+    "gerenciar_farmacias": frozenset({"admin"}),
     # registro de auditoria geral (sem dados de paciente)
     "ver_auditoria": frozenset({"admin"}),
     # LGPD: baixar os próprios dados e pedir correção ou exclusão da conta (todo mundo)

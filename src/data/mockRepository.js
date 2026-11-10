@@ -1,6 +1,6 @@
 // Repositório simulado: mesma interface do apiRepository, dados no localStorage.
 // Usado quando VITE_API_URL não está definida.
-import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts, referralSeeds } from "./mockData";
+import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts, referralSeeds, demoPharmacies } from "./mockData";
 import { isVisit, countBy } from "./stats";
 import { timeLabel, dayKey, fromDayKey } from "../utils/dates";
 
@@ -14,6 +14,8 @@ const DEMO_DOCTORS = [
   { id: "demo-medico-2", name: "Dra. Carla Nunes" },
 ];
 let referrals = seedReferrals();
+// farmácias criadas ou editadas na demonstração (em memória)
+let pharmacies = demoPharmacies.map((p) => ({ ...p }));
 // pedidos de privacidade (LGPD) da demonstração
 let privacyRequests = [];
 let demoUsers = [
@@ -172,7 +174,7 @@ export const mockRepository = {
   // a demonstração tem uma farmácia só; `unit` é ignorado
   async listUnits() {
     await wait(LATENCY);
-    return [{ id: "demo", name: unit }];
+    return pharmacies.map((p) => ({ id: p.id, name: p.name })).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   },
 
   async loadDashboard() {
@@ -326,6 +328,47 @@ export const mockRepository = {
   async listAudit(month) {
     await wait(LATENCY);
     return { month, events: [], next: null, units: [{ id: "demo", name: unit }] };
+  },
+
+  /* ---------- farmácias (administração; em memória) ---------- */
+  async listPharmacies() {
+    await wait(LATENCY);
+    // a farmácia da demonstração usa os atendimentos do navegador; as outras, números fixos
+    const today = current().visits;
+    const c = countBy(today);
+    const live = {
+      today: { total: today.length, urgent: today.filter((v) => v.urgent).length },
+      month: {
+        total: baseline.outcomes.done + baseline.outcomes.referred + baseline.outcomes.progress + today.length - baseline.seedCount,
+        done: baseline.outcomes.done + c.done - baseline.seedCounts.done,
+        referred: baseline.outcomes.referred + c.referred - baseline.seedCounts.referred,
+        progress: baseline.outcomes.progress + c.progress - baseline.seedCounts.progress,
+        urgent: 23,
+        triageMinutes: baseline.triageMinutes,
+      },
+    };
+    const empty = { today: { total: 0, urgent: 0 }, month: { total: 0, done: 0, referred: 0, progress: 0, urgent: 0, triageMinutes: null } };
+    const units = pharmacies
+      .map((p) => (p.id === "demo" ? { ...p, ...live } : { ...empty, ...p }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return { month: dayKey().slice(0, 7), units };
+  },
+
+  async createPharmacy({ id, name, monthGoal, triageGoalMin }) {
+    await wait(LATENCY);
+    if (pharmacies.some((p) => p.id === id)) {
+      throw Object.assign(new Error("Já existe uma farmácia com este código."), { data: { details: { fields: { id: "Código em uso." } } } });
+    }
+    const created = { id, name, monthGoal, triageGoalMin, pharmacists: { active: 0, pending: 0 } };
+    pharmacies = [...pharmacies, created];
+    return (await this.listPharmacies()).units.find((p) => p.id === id);
+  },
+
+  async updatePharmacy(id, change) {
+    await wait(LATENCY / 2);
+    if (!pharmacies.some((p) => p.id === id)) throw new Error("Farmácia não encontrada.");
+    pharmacies = pharmacies.map((p) => (p.id === id ? { ...p, ...change } : p));
+    return (await this.listPharmacies()).units.find((p) => p.id === id);
   },
 
   /* ---------- usuários (administração; em memória) ---------- */

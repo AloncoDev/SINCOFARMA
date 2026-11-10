@@ -13,6 +13,7 @@ const NovaTriagem = lazy(loaders.NovaTriagem);
 const Atendimentos = lazy(loaders.Atendimentos);
 const Encaminhamentos = lazy(loaders.Encaminhamentos);
 const Encaminhamento = lazy(loaders.Encaminhamento);
+const Farmacias = lazy(loaders.Farmacias);
 const EmBreve = lazy(loaders.EmBreve);
 const SemAcesso = lazy(loaders.SemAcesso);
 const Usuarios = lazy(loaders.Usuarios);
@@ -66,7 +67,7 @@ const PAGINAS = [
   ["/encaminhamentos", <Encaminhamentos />],
   // caso aberto: mesma permissão da lista
   ["/encaminhamentos/:id", <Encaminhamento />, "/encaminhamentos"],
-  ["/farmacias", <EmBreve title="Farmácias" />],
+  ["/farmacias", <Farmacias />],
   ["/relatorios", <EmBreve title="Relatórios" />],
   ["/usuarios", <Usuarios />],
   ["/minha-conta", <MinhaConta />],

@@ -4,6 +4,7 @@ import re
 
 from .comum import auditoria
 from .comum import encaminhamentos as enc
+from .comum import farmacias
 from .comum import lgpd
 from .comum import repositorio as repo
 from .comum import usuarios
@@ -18,7 +19,9 @@ from .comum.validacao import (
     validar_cpf_titular,
     validar_criacao,
     validar_encaminhamento,
+    validar_farmacia,
     validar_mudanca_encaminhamento,
+    validar_mudanca_farmacia,
     validar_mudanca_usuario,
     validar_pedido_lgpd,
     validar_resposta_lgpd,
@@ -238,6 +241,34 @@ def atualizar_usuario(event, _context):
     if not SUB.match(user_id):
         raise HttpError(404, "Usuário não encontrado.")
     return 200, usuarios.update(caller, user_id, validar_mudanca_usuario(parse_json(event)))
+
+
+# ---------------------------------------------------------------- farmácias (administração)
+
+@handler
+def listar_farmacias(event, _context):
+    """GET /farmacias: todas as farmácias com metas, equipe e números de hoje e do mês (sem pacientes)."""
+    caller_from_event(event).exigir("gerenciar_farmacias")
+    return 200, farmacias.list_all()
+
+
+@handler
+def criar_farmacia(event, _context):
+    """POST /farmacias: cadastra a farmácia e o grupo unidade:<código> do Cognito."""
+    caller = caller_from_event(event)
+    caller.exigir("gerenciar_farmacias")
+    return 201, farmacias.create(caller, validar_farmacia(parse_json(event)))
+
+
+@handler
+def atualizar_farmacia(event, _context):
+    """PATCH /farmacias/{id}: nome e metas."""
+    caller = caller_from_event(event)
+    caller.exigir("gerenciar_farmacias")
+    unit = (event.get("pathParameters") or {}).get("id", "")
+    if not UNIT_ID.fullmatch(unit):
+        raise HttpError(404, "Farmácia não encontrada.")
+    return 200, farmacias.update(caller, unit, validar_mudanca_farmacia(parse_json(event)))
 
 
 # ---------------------------------------------------------------- ficha do atendimento

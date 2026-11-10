@@ -19,6 +19,11 @@
 //   GET   /usuarios       -> { users: [{ id, name, email, cpf (mascarado), crf, roles, unit, enabled, pending }], units }
 //   POST  /usuarios       { cpf, name, email, roles, unit?, crf? } -> usuário (convite por e-mail)
 //   PATCH /usuarios/:id   { roles?, unit?, enabled?, resetMfa?, resendInvite? } -> usuário
+// Farmácias (administração; só números agregados, sem pacientes):
+//   GET   /farmacias          -> { month, units: [{ id, name, monthGoal, triageGoalMin, pharmacists: { active, pending },
+//                                  today: { total, urgent }, month: { total, done, referred, progress, urgent, triageMinutes } }] }
+//   POST  /farmacias          { id, name, monthGoal, triageGoalMin } -> farmácia
+//   PATCH /farmacias/:id      { name?, monthGoal?, triageGoalMin? } -> farmácia
 //   GET   /auditoria[?mes=aaaa-mm&inicio=] -> { month, events, next, units } (administração; sem dados de paciente)
 // LGPD (direitos do titular):
 //   GET   /me/dados                -> tudo o que o painel guarda sobre quem pede (JSON para baixar)
@@ -45,6 +50,9 @@ export const apiRepository = {
   getVisitRecord: (id) => api(`/visits/${encodeURIComponent(id)}`),
   listAudit: (month, start) =>
     api(`/auditoria?${new URLSearchParams({ mes: month, ...(start ? { inicio: start } : {}) })}`),
+  listPharmacies: () => api("/farmacias"),
+  createPharmacy: (data) => api("/farmacias", { method: "POST", body: JSON.stringify(data) }),
+  updatePharmacy: (id, change) => api(`/farmacias/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(change) }),
   listUsers: () => api("/usuarios"),
   createUser: (data) => api("/usuarios", { method: "POST", body: JSON.stringify(data) }),
   updateUser: (id, change) => api(`/usuarios/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(change) }),

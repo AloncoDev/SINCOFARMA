@@ -147,3 +147,17 @@ export const referralSeeds = [
     },
   },
 ];
+
+// Rede de farmácias da demonstração (tela Farmácias, administração). A primeira é a da demo;
+// os números das outras são fixos.
+export const demoPharmacies = [
+  { id: "demo", name: unit, monthGoal: 525, triageGoalMin: 10, pharmacists: { active: 2, pending: 0 } },
+  { id: "taguatinga-centro", name: "Farmácia Popular do Servidor — Taguatinga Centro / RA III", monthGoal: 420, triageGoalMin: 10,
+    pharmacists: { active: 3, pending: 1 }, today: { total: 14, urgent: 1 }, month: { total: 268, done: 201, referred: 41, progress: 26, urgent: 9, triageMinutes: 9.2 } },
+  { id: "ceilandia-norte", name: "Drogaria Vida — Ceilândia Norte / RA IX", monthGoal: 600, triageGoalMin: 12,
+    pharmacists: { active: 4, pending: 0 }, today: { total: 21, urgent: 2 }, month: { total: 512, done: 389, referred: 77, progress: 46, urgent: 18, triageMinutes: 13.4 } },
+  { id: "aguas-claras", name: "Farmácia Bem Estar — Águas Claras / RA XX", monthGoal: 300, triageGoalMin: 8,
+    pharmacists: { active: 1, pending: 1 }, today: { total: 6, urgent: 0 }, month: { total: 97, done: 80, referred: 9, progress: 8, urgent: 2, triageMinutes: 7.1 } },
+  { id: "sobradinho", name: "Drogaria São Lucas — Sobradinho / RA V", monthGoal: 250, triageGoalMin: 10,
+    pharmacists: { active: 0, pending: 1 }, today: { total: 0, urgent: 0 }, month: { total: 0, done: 0, referred: 0, progress: 0, urgent: 0, triageMinutes: null } },
+];

@@ -33,6 +33,9 @@ tests/                         pytest com DynamoDB e Cognito simulados
 | GET | `/usuarios` | administração: usuários (CPF mascarado, perfis, farmácia, situação) e farmácias |
 | POST | `/usuarios` | administração cadastra: `{ cpf, name, email, roles, unit?, crf? }`; o Cognito envia a senha temporária |
 | PATCH | `/usuarios/{id}` | administração: `{ roles?, unit?, enabled?, resetMfa?, resendInvite? }` (ninguém desativa a si mesmo) |
+| GET | `/farmacias` | farmácias com metas, equipe (farmacêuticos ativos e convites pendentes) e números de hoje e do mês, só agregados. Admin |
+| POST | `/farmacias` | cadastra farmácia (`id` vira o grupo `unidade:<id>`), nome e metas, com auditoria. Admin |
+| PATCH | `/farmacias/{id}` | muda nome e metas (o código não muda), com auditoria. Admin |
 | GET | `/auditoria?mes=aaaa-mm` | administração: registro geral do mês, sem dados de paciente (paginado por `inicio`) |
 | GET | `/me/dados` | qualquer perfil: tudo o que o painel guarda sobre quem pede, para baixar (sem dados de paciente) |
 | GET | `/me/pedidos` | qualquer perfil: os próprios pedidos de privacidade |

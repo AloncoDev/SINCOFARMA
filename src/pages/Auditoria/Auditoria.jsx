@@ -20,6 +20,8 @@ const ACTIONS = {
   referral_cancelled: { label: "Cancelou encaminhamento", group: "encaminhamentos" },
   user_create: { label: "Cadastrou usuário", group: "usuarios" },
   user_update: { label: "Alterou usuário", group: "usuarios" },
+  unit_create: { label: "Cadastrou farmácia", group: "usuarios" },
+  unit_update: { label: "Alterou farmácia", group: "usuarios" },
   // acesso à ficha completa (CPF, telefone, dados de saúde)
   visit_read: { label: "Abriu ficha", group: "atendimentos" },
   lgpd_export_self: { label: "Baixou os próprios dados", group: "privacidade" },
@@ -28,7 +30,7 @@ const ACTIONS = {
   lgpd_user_anonymized: { label: "Anonimizou conta", group: "privacidade" },
   lgpd_export_patient: { label: "Exportou dados de paciente", group: "privacidade" },
 };
-const GROUPS = { atendimentos: "Atendimentos", encaminhamentos: "Encaminhamentos", usuarios: "Usuários e acessos", privacidade: "Privacidade (LGPD)" };
+const GROUPS = { atendimentos: "Atendimentos", encaminhamentos: "Encaminhamentos", usuarios: "Usuários, farmácias e acessos", privacidade: "Privacidade (LGPD)" };
 
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 // últimos 12 meses, do mais recente para o mais antigo
@@ -51,6 +53,12 @@ function detail(ev) {
   if (t.type === "visit" || t.type === "referral") parts.push(`Protocolo ${t.label ?? "—"}`);
   if (t.type === "referral" && t.doctor) parts.push(`médico: ${t.doctor}`);
   if (t.type === "user") parts.push(t.label ?? "conta removida");
+  if (t.type === "unit") parts.push(t.label);
+  // metas da farmácia: valor novo (ou antigo → novo, na alteração)
+  const goal = (v, unit) => (Array.isArray(v) ? `${v[0]} → ${v[1]}${unit}` : `${v}${unit}`);
+  if (d.monthGoal !== undefined) parts.push(`meta mensal ${goal(d.monthGoal, "")}`);
+  if (d.triageGoalMin !== undefined) parts.push(`meta de triagem ${goal(d.triageGoalMin, " min")}`);
+  if (Array.isArray(d.name)) parts.push(`antes: ${d.name[0]}`);
   if (t.type === "lgpd_request") parts.push(t.label);
   // paciente: só o CPF mascarado e quantos registros saíram no arquivo
   if (t.type === "patient") parts.push(`CPF ${t.label}`);
