@@ -148,16 +148,19 @@ export const referralSeeds = [
   },
 ];
 
-// Rede de farmácias da demonstração (tela Farmácias, administração). A primeira é a da demo;
-// os números das outras são fixos.
+// Rede de farmácias da demonstração (telas Farmácias e Relatórios, administração). A primeira é a da demo.
+// Os números saem de `mockReport.js` a partir de `profile` (sempre iguais para o mesmo dia):
+//   volume: atendimentos num mês cheio · history: meses de funcionamento (0 = recém-aberta)
+//   mix: [resolvidos, encaminhados, acompanhamento] · urgent: fração com Red Flag · minutes: triagem média
 export const demoPharmacies = [
-  { id: "demo", name: unit, monthGoal: 525, triageGoalMin: 10, pharmacists: { active: 2, pending: 0 } },
+  { id: "demo", name: unit, monthGoal: 525, triageGoalMin: 10, pharmacists: { active: 2, pending: 0 },
+    profile: { volume: 470, history: 30, mix: [0.74, 0.16, 0.1], urgent: 0.045, minutes: 8 } },
   { id: "taguatinga-centro", name: "Farmácia Popular do Servidor — Taguatinga Centro / RA III", monthGoal: 420, triageGoalMin: 10,
-    pharmacists: { active: 3, pending: 1 }, today: { total: 14, urgent: 1 }, month: { total: 268, done: 201, referred: 41, progress: 26, urgent: 9, triageMinutes: 9.2 } },
+    pharmacists: { active: 3, pending: 1 }, profile: { volume: 330, history: 30, mix: [0.75, 0.15, 0.1], urgent: 0.034, minutes: 9.2 } },
   { id: "ceilandia-norte", name: "Drogaria Vida — Ceilândia Norte / RA IX", monthGoal: 600, triageGoalMin: 12,
-    pharmacists: { active: 4, pending: 0 }, today: { total: 21, urgent: 2 }, month: { total: 512, done: 389, referred: 77, progress: 46, urgent: 18, triageMinutes: 13.4 } },
+    pharmacists: { active: 4, pending: 0 }, profile: { volume: 590, history: 30, mix: [0.76, 0.15, 0.09], urgent: 0.035, minutes: 13.4 } },
   { id: "aguas-claras", name: "Farmácia Bem Estar — Águas Claras / RA XX", monthGoal: 300, triageGoalMin: 8,
-    pharmacists: { active: 1, pending: 1 }, today: { total: 6, urgent: 0 }, month: { total: 97, done: 80, referred: 9, progress: 8, urgent: 2, triageMinutes: 7.1 } },
+    pharmacists: { active: 1, pending: 1 }, profile: { volume: 230, history: 4, mix: [0.82, 0.09, 0.09], urgent: 0.02, minutes: 7.1 } },
   { id: "sobradinho", name: "Drogaria São Lucas — Sobradinho / RA V", monthGoal: 250, triageGoalMin: 10,
-    pharmacists: { active: 0, pending: 1 }, today: { total: 0, urgent: 0 }, month: { total: 0, done: 0, referred: 0, progress: 0, urgent: 0, triageMinutes: null } },
+    pharmacists: { active: 0, pending: 1 }, profile: { volume: 200, history: 0, mix: [0.75, 0.15, 0.1], urgent: 0.03, minutes: 10 } },
 ];

@@ -19,7 +19,7 @@ def _pool() -> str:
     return os.environ["USER_POOL_ID"]
 
 
-def _profiles() -> list[dict]:
+def profiles() -> list[dict]:
     """Perfis completos de todas as farmácias (mesma varredura de list_units)."""
     kwargs = {"FilterExpression": Attr("SK").eq("PROFILE")}
     items = []
@@ -33,19 +33,7 @@ def _profiles() -> list[dict]:
 
 def _stats(units: list[str], day: str, month: str) -> dict[str, dict]:
     """Contadores de hoje e do mês de várias farmácias numa leitura em lote. Chave = PK."""
-    keys = [{"PK": repo.pk_day(u, day), "SK": repo.STATS} for u in units] + [
-        {"PK": repo.pk_month(u, month), "SK": repo.STATS} for u in units
-    ]
-    table = os.environ["TABELA_PAINEL"]
-    found: dict[str, dict] = {}
-    for start in range(0, len(keys), 100):
-        request = {table: {"Keys": keys[start:start + 100]}}
-        while request:
-            resp = repo._dynamodb.batch_get_item(RequestItems=request)
-            for item in resp.get("Responses", {}).get(table, []):
-                found[item["PK"]] = item
-            request = resp.get("UnprocessedKeys") or None
-    return found
+    return repo.stats_by_pk([repo.pk_day(u, day) for u in units] + [repo.pk_month(u, month) for u in units])
 
 
 def _pharmacists(unit: str) -> dict[str, int]:
@@ -97,7 +85,7 @@ def _public(item: dict, stats: dict[str, dict], day: str, month: str, people: di
 def list_all() -> dict:
     now = tempo.now()
     day, month = tempo.day_key(now), tempo.month_key(now)
-    items = _profiles()
+    items = profiles()
     units = [i["PK"].removeprefix("UNIT#") for i in items]
     stats = _stats(units, day, month) if units else {}
     out = [_public(i, stats, day, month, _pharmacists(u)) for i, u in zip(items, units)]

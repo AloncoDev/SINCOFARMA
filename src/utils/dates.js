@@ -70,3 +70,30 @@ export function dayLabel(key, now = new Date()) {
   });
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+/** Mês local no formato da API: "aaaa-mm" */
+export const monthKey = (date = new Date()) => dayKey(date).slice(0, 7);
+
+/** Soma `n` meses a um "aaaa-mm" ("2026-01" − 1 = "2025-12") */
+export function shiftMonth(key, n) {
+  const [y, m] = key.split("-").map(Number);
+  const idx = y * 12 + (m - 1) + n;
+  return `${String(Math.floor(idx / 12)).padStart(4, "0")}-${String((idx % 12) + 1).padStart(2, "0")}`;
+}
+
+/** Quantos dias tem o mês "aaaa-mm" */
+export function daysInMonth(key) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
+/** "aaaa-mm" válido? */
+export const isMonthKey = (key) => /^\d{4}-(0[1-9]|1[0-2])$/.test(key ?? "");
+
+/** "2026-11" -> "Novembro 2026"; com `short`: "nov/26" */
+export function monthKeyLabel(key, { short = false } = {}) {
+  const [y, m] = key.split("-").map(Number);
+  const d = new Date(y, m - 1, 15);
+  if (!short) return monthLabel(d);
+  return `${d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}/${String(y).slice(2)}`;
+}

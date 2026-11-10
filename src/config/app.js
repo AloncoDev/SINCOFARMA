@@ -1,8 +1,8 @@
 // Configuração do que está disponível no app. Um lugar só para ligar/desligar.
 import { HAS_API } from "../data";
 
-/** Rotas com página funcional. As demais mostram "Módulo em construção". */
-export const ROUTES_READY = new Set(["/dashboard", "/atendimentos", "/encaminhamentos", "/farmacias", "/nova-triagem", "/usuarios", "/minha-conta", "/auditoria", "/privacidade-lgpd"]);
+/** Rotas com página funcional. As demais aparecem no menu com o selo "em breve". */
+export const ROUTES_READY = new Set(["/dashboard", "/atendimentos", "/encaminhamentos", "/farmacias", "/relatorios", "/nova-triagem", "/usuarios", "/minha-conta", "/auditoria", "/privacidade-lgpd"]);
 export const isReady = (path) => ROUTES_READY.has(path);
 
 /**

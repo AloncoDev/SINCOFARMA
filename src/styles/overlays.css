@@ -102,7 +102,7 @@
 }
 .table-more .link-arrow { font-size: 12px; }
 
-/* ---------- página em breve ---------- */
+/* ---------- aviso centralizado (sem acesso) ---------- */
 .soon {
   position: relative;
   overflow: hidden;
@@ -112,19 +112,7 @@
   padding: clamp(40px, 8vw, 80px) 24px;
   text-align: center;
 }
-.soon > *:not(.soon-glow) { position: relative; z-index: 1; }
-.soon-glow {
-  position: absolute;
-  top: -40%;
-  left: 50%;
-  width: 520px;
-  height: 420px;
-  margin-left: -260px;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(245, 158, 11, 0.16), transparent);
-  filter: blur(30px);
-  pointer-events: none;
-}
+.soon > * { position: relative; z-index: 1; }
 .soon-icon {
   position: relative;
   display: grid;
@@ -136,31 +124,9 @@
   margin-bottom: 8px;
 }
 .soon-icon-inner { display: grid; place-items: center; }
-.soon-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border: 2px solid rgba(245, 158, 11, 0.6);
-}
 .soon h2 { font-size: 22px; color: var(--blue-900); letter-spacing: -0.01em; }
 .soon p { max-width: 420px; font-size: 14.5px; line-height: 1.55; color: var(--muted); }
 .soon p b { color: var(--blue-900); font-weight: 600; }
-.soon-progress {
-  position: relative;
-  width: min(240px, 70%);
-  height: 4px;
-  margin: 6px 0 10px;
-  border-radius: 99px;
-  background: #fde9c4;
-  overflow: hidden;
-}
-.soon-progress span {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 45%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, transparent, #f59e0b, transparent);
-}
 .soon .btn { text-decoration: none; }
 
 /* brilho que atravessa o botão principal no hover */

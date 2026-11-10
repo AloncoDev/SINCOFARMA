@@ -28,6 +28,8 @@ const PERMISSOES = {
   gerenciar_usuarios: ["admin"],
   // cadastrar farmácias e ajustar nome e metas
   gerenciar_farmacias: ["admin"],
+  // relatórios da rede (por dia, mês e farmácia), só contadores agregados
+  ver_relatorios: ["admin"],
   ver_auditoria: ["admin"],
   // LGPD: baixar os próprios dados e pedir correção ou exclusão (todo perfil)
   exercer_direitos: ["farmaceutico", "medico", "admin"],

@@ -694,6 +694,30 @@ Resources:
             Method: GET
             Path: "/visits/{id}"
 
+  RelatoriosFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sincofarma-painel-${Stage}-relatorios"
+      Handler: painel.api.relatorios_atendimentos
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Scan, dynamodb:BatchGetItem] # perfis e contadores (#STATS)
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+      Events:
+        Http:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Method: GET
+            Path: "/relatorios"
+
   AuditoriaFn:
     Type: AWS::Serverless::Function
     Properties:
@@ -725,6 +749,11 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${VerVisitaFn}"
+      RetentionInDays: !Ref LogRetentionDays
+  RelatoriosLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${RelatoriosFn}"
       RetentionInDays: !Ref LogRetentionDays
   AuditoriaLogs:
     Type: AWS::Logs::LogGroup

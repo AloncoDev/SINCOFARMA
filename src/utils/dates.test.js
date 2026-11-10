@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isSameDay, parseBrDate, monthLabel, startOfDay, dayKey, fromDayKey, shiftDay, dayLabel } from "./dates";
+import { isSameDay, parseBrDate, monthLabel, startOfDay, dayKey, fromDayKey, shiftDay, dayLabel, shiftMonth, daysInMonth, isMonthKey, monthKeyLabel } from "./dates";
 
 describe("dates", () => {
   it("compara dias ignorando a hora", () => {
@@ -39,5 +39,17 @@ describe("dates", () => {
     expect(dayLabel("2026-11-09", now)).toBe("Ontem");
     expect(dayLabel("2026-11-07", now)).toBe("Sábado, 7 de novembro");
     expect(dayLabel("2025-11-07", now)).toBe("Sexta-feira, 7 de novembro de 2025");
+  });
+
+  it("meses no formato aaaa-mm", () => {
+    expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+    expect(shiftMonth("2025-12", 1)).toBe("2026-01");
+    expect(shiftMonth("2026-03", -14)).toBe("2025-01");
+    expect(daysInMonth("2024-02")).toBe(29);
+    expect(daysInMonth("2026-11")).toBe(30);
+    expect(isMonthKey("2026-13")).toBe(false);
+    expect(isMonthKey("2026-07")).toBe(true);
+    expect(monthKeyLabel("2026-11")).toBe("Novembro 2026");
+    expect(monthKeyLabel("2026-11", { short: true })).toBe("nov/26");
   });
 });
