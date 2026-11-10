@@ -133,4 +133,4 @@ src/
 ## Deploy
 
 `vercel.json` reescreve todas as rotas para `index.html` (SPA). Os chunks são separados por
-biblioteca (`react`, `motion`, `icons`) e por página, com pré-carregamento após o login.
+biblioteca (`react`, `motion`, `icons`) e por página, com pré-carregamento após o login…
