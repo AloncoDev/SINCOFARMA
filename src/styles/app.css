@@ -1188,6 +1188,7 @@ tr:hover .avatar { transform: scale(1.1); }
 .status--amber { background: #fef3c7; color: #b45309; }
 .status--blue { background: #e3edfd; color: #1d4ed8; }
 .status--blue i { animation: blink 1.4s ease-in-out infinite; }
+.status--gray { background: #f1f5f9; color: #475569; }
 
 .icon-btn {
   display: inline-grid;
@@ -1417,3 +1418,63 @@ tr:hover .avatar { transform: scale(1.1); }
 .sel-pop li.is-selected svg { color: var(--blue-700); }
 .sel-pop li[aria-disabled] { cursor: not-allowed; opacity: 0.45; }
 .unit-select .sel-value { font-size: 14px; font-weight: 600; color: var(--blue-900); max-width: min(60vw, 420px); }
+
+/* resumo em cartões que filtram a lista (Atendimentos, Encaminhamentos) */
+.pick-stats {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
+  gap: 12px;
+}
+.pick-stat {
+  --tone: var(--blue-700);
+  --tint: #eaf1fa;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  transition: border-color var(--dur-med), box-shadow var(--dur-med) var(--ease-out), transform var(--dur-fast) var(--ease-out), background var(--dur-med);
+}
+.pick-stat:hover { border-color: #c9d5e4; box-shadow: 0 8px 18px -12px rgba(10, 37, 64, 0.35); }
+.pick-stat:active { transform: scale(0.98); }
+.pick-stat:focus-visible { outline: 0; box-shadow: 0 0 0 4px rgba(26, 111, 181, 0.25); }
+.pick-stat.is-active { border-color: var(--tone); background: var(--tint); box-shadow: inset 0 0 0 1px var(--tone); }
+.pick-stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #475569;
+}
+.pick-stat-label i { width: 7px; height: 7px; border-radius: 50%; background: var(--tone); }
+.pick-stat-label svg { color: var(--tone); }
+.pick-stat strong {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--blue-900);
+  font-variant-numeric: tabular-nums;
+}
+.pick-stat--navy { --tone: var(--blue-700); --tint: #eaf1fa; }
+.pick-stat--green { --tone: #15803d; --tint: #effaf4; }
+.pick-stat--amber { --tone: #b45309; --tint: #fffbeb; }
+.pick-stat--blue { --tone: #1d4ed8; --tint: #eef4fe; }
+.pick-stat--red { --tone: var(--c-red); --tint: #fef2f2; }
+
+.pick-stat--gray { --tone: #64748b; --tint: #f1f5f9; }
+@media (max-width: 1024px) {
+  .pick-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .pick-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pick-stat:first-child { grid-column: 1 / -1; }
+}

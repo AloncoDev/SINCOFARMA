@@ -11,6 +11,8 @@ const Login = lazy(loaders.Login);
 const Dashboard = lazy(loaders.Dashboard);
 const NovaTriagem = lazy(loaders.NovaTriagem);
 const Atendimentos = lazy(loaders.Atendimentos);
+const Encaminhamentos = lazy(loaders.Encaminhamentos);
+const Encaminhamento = lazy(loaders.Encaminhamento);
 const EmBreve = lazy(loaders.EmBreve);
 const SemAcesso = lazy(loaders.SemAcesso);
 const Usuarios = lazy(loaders.Usuarios);
@@ -61,7 +63,9 @@ const PAGINAS = [
   ["/dashboard", <Dashboard />],
   ["/atendimentos", <Atendimentos />],
   ["/nova-triagem", <NovaTriagem />],
-  ["/encaminhamentos", <EmBreve title="Encaminhamentos" />],
+  ["/encaminhamentos", <Encaminhamentos />],
+  // caso aberto: mesma permissão da lista
+  ["/encaminhamentos/:id", <Encaminhamento />, "/encaminhamentos"],
   ["/farmacias", <EmBreve title="Farmácias" />],
   ["/relatorios", <EmBreve title="Relatórios" />],
   ["/usuarios", <Usuarios />],

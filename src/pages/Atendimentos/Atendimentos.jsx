@@ -127,16 +127,16 @@ export default function Atendimentos() {
         </div>
       </motion.section>
 
-      <motion.section className="day-stats" aria-label="Resumo do dia" {...rise(4)}>
+      <motion.section className="pick-stats" aria-label="Resumo do dia" {...rise(4)}>
         {STATS.map((s) => (
           <button
             key={s.key}
             type="button"
-            className={`day-stat day-stat--${s.tone}${filter === s.key ? " is-active" : ""}`}
+            className={`pick-stat pick-stat--${s.tone}${filter === s.key ? " is-active" : ""}`}
             aria-pressed={filter === s.key}
             onClick={() => go({ desfecho: filter === s.key && s.key !== "all" ? "all" : s.key })}
           >
-            <span className="day-stat-label">
+            <span className="pick-stat-label">
               {s.key === "urgent" ? <TriangleAlert size={13} aria-hidden="true" /> : <i aria-hidden="true" />}
               {s.label}
             </span>
