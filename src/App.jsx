@@ -10,6 +10,7 @@ import { appPages, loaders } from "./pages/loaders";
 const Login = lazy(loaders.Login);
 const Dashboard = lazy(loaders.Dashboard);
 const NovaTriagem = lazy(loaders.NovaTriagem);
+const Atendimentos = lazy(loaders.Atendimentos);
 const EmBreve = lazy(loaders.EmBreve);
 const SemAcesso = lazy(loaders.SemAcesso);
 const Usuarios = lazy(loaders.Usuarios);
@@ -58,7 +59,7 @@ function PublicOnly({ children }) {
 // rota -> página (a permissão de cada uma está em services/permissoes.js)
 const PAGINAS = [
   ["/dashboard", <Dashboard />],
-  ["/atendimentos", <EmBreve title="Atendimentos" />],
+  ["/atendimentos", <Atendimentos />],
   ["/nova-triagem", <NovaTriagem />],
   ["/encaminhamentos", <EmBreve title="Encaminhamentos" />],
   ["/farmacias", <EmBreve title="Farmácias" />],

@@ -10,9 +10,8 @@ import { podeAlterar, podeRota } from "../services/permissoes";
 import { Link } from "react-router-dom";
 
 export default function VisitDrawer() {
-  const { visits, selectedId, closeVisit, updateVisit, notify } = useClinic();
+  const { selectedVisit: visit, closeVisit, updateVisit, notify } = useClinic();
   const { user } = useAuth();
-  const visit = visits.find((v) => v.id === selectedId);
   // desfecho e Red Flag: só quem registrou (o servidor recusa os demais)
   const editable = podeAlterar(user, visit);
   const panelRef = useRef(null);

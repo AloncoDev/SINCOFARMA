@@ -2,7 +2,7 @@
 import { HAS_API } from "../data";
 
 /** Rotas com página funcional. As demais mostram "Módulo em construção". */
-export const ROUTES_READY = new Set(["/dashboard", "/nova-triagem", "/usuarios", "/minha-conta", "/auditoria", "/privacidade-lgpd"]);
+export const ROUTES_READY = new Set(["/dashboard", "/atendimentos", "/nova-triagem", "/usuarios", "/minha-conta", "/auditoria", "/privacidade-lgpd"]);
 export const isReady = (path) => ROUTES_READY.has(path);
 
 /**

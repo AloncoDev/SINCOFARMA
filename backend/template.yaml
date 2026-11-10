@@ -270,6 +270,27 @@ Resources:
           Type: HttpApi
           Properties: { ApiId: !Ref Api, Method: POST, Path: /visits }
 
+  ListarVisitasFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sincofarma-painel-${Stage}-listar-visitas"
+      Handler: painel.api.listar_visitas
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:Query # só os resumos do dia (tabela PAINEL)
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+      Events:
+        Get:
+          Type: HttpApi
+          Properties: { ApiId: !Ref Api, Method: GET, Path: /visits }
+
   AtualizarVisitaFn:
     Type: AWS::Serverless::Function
     Properties:
