@@ -1,6 +1,6 @@
 // Repositório simulado: mesma interface do apiRepository, dados no localStorage.
 // Usado quando VITE_API_URL não está definida.
-import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts } from "./mockData";
+import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts, referralSeeds } from "./mockData";
 import { isVisit, countBy } from "./stats";
 import { timeLabel, dayKey, fromDayKey } from "../utils/dates";
 
@@ -13,7 +13,7 @@ const DEMO_DOCTORS = [
   { id: "demo-medico-1", name: "Dr. Paulo Lima" },
   { id: "demo-medico-2", name: "Dra. Carla Nunes" },
 ];
-let referrals = [];
+let referrals = seedReferrals();
 // pedidos de privacidade (LGPD) da demonstração
 let privacyRequests = [];
 let demoUsers = [
@@ -37,6 +37,38 @@ const referralSummary = (r) => ({
   fromName: r.from.name,
   doctorName: r.doctor.name,
 });
+
+/** Encaminhamentos de demonstração, com datas relativas a agora. */
+function seedReferrals() {
+  const now = Date.now();
+  const iso = (hours) => new Date(now - hours * 3600e3).toISOString();
+  return referralSeeds.map((r, i) => {
+    const createdAt = iso(r.hoursAgo);
+    const answeredAt = r.answeredAfter ? iso(r.hoursAgo - r.answeredAfter) : null;
+    const statusAt = answeredAt ?? (r.status === "sent" ? createdAt : iso(r.hoursAgo - 1));
+    return {
+      id: `ref-demo-${i + 1}`,
+      // os dois primeiros são atendimentos de hoje da demonstração; os outros, sem ficha para abrir
+      visitId: r.visitId ?? null,
+      protocol: `DF-2026-${String(4180 + i).padStart(6, "0")}`,
+      unit: "demo",
+      unitName: unit,
+      createdAt,
+      status: r.status,
+      statusAt,
+      priority: r.priority,
+      urgent: r.priority === "urgente" || r.clinical.redFlags.length > 0,
+      reason: r.reason,
+      from: { name: "Dra. Ana Souza", crf: "4192" },
+      doctor: DEMO_DOCTORS[r.doctor],
+      patient: r.patient,
+      clinical: r.clinical,
+      response: r.response ?? null,
+      answeredAt,
+      mine: true,
+    };
+  });
+}
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -227,7 +259,8 @@ export const mockRepository = {
 
   async createReferral({ visitId, doctorId, reason, priority = "rotina" }) {
     await wait(LATENCY);
-    const visit = current().visits.find((v) => v.id === visitId);
+    const old = archiveDay(visitId);
+    const visit = current().visits.find((v) => v.id === visitId) ?? (old ? archiveFor(old) : []).find((v) => v.id === visitId);
     const doctor = DEMO_DOCTORS.find((d) => d.id === doctorId);
     if (!visit || !doctor) throw new Error("Atendimento ou médico não encontrado.");
     const now = new Date().toISOString();
@@ -385,7 +418,7 @@ export const mockRepository = {
   /** Apaga o cache local (chamado no logout). */
   clear() {
     loaded = null;
-    referrals = [];
+    referrals = seedReferrals();
     try {
       localStorage.removeItem(KEY);
     } catch {

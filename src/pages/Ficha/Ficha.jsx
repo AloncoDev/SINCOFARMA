@@ -5,54 +5,10 @@ import { ArrowLeft, Printer, TriangleAlert, UserRound, MessageSquareText, Pill, 
 import SpotlightCard from "../../components/SpotlightCard";
 import { repository } from "../../data";
 import { STATUS } from "../../data/catalog";
-import { RISK_LEVELS } from "../NovaTriagem/constants";
 import { rise } from "../../utils/motion";
+import { RISK, SEX, phone, cns, brDate, age, dateTime, vitalsOf } from "./clinico";
+import List from "./FichaList";
 import "./Ficha.css";
-
-const RISK = Object.fromEntries(RISK_LEVELS.map((r) => [r.id, r]));
-const SEX = { F: "Feminino", M: "Masculino" };
-
-// o servidor guarda só os dígitos; aqui volta ao formato de leitura
-const onlyDigits = (v) => String(v ?? "").replace(/\D/g, "");
-function phone(v) {
-  const d = onlyDigits(v);
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-  return v || null;
-}
-const cns = (v) => onlyDigits(v).replace(/(\d{3})(\d{4})(\d{4})(\d{4})/, "$1 $2 $3 $4") || null;
-
-function brDate(iso) {
-  if (!iso) return null;
-  const [y, m, d] = String(iso).slice(0, 10).split("-");
-  return d && m && y ? `${d}/${m}/${y}` : null;
-}
-
-function age(iso) {
-  if (!iso) return null;
-  const b = new Date(`${String(iso).slice(0, 10)}T12:00:00`);
-  const n = new Date();
-  let a = n.getFullYear() - b.getFullYear();
-  if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a -= 1;
-  return Number.isFinite(a) ? a : null;
-}
-
-const dateTime = (iso) =>
-  new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-
-const VITALS = [
-  ["PA", (v) => (v.systolic != null && v.diastolic != null ? `${v.systolic}/${v.diastolic} mmHg` : null)],
-  ["FC", (v) => (v.heartRate != null ? `${v.heartRate} bpm` : null)],
-  ["SpO₂", (v) => (v.spo2 != null ? `${v.spo2}%` : null)],
-  ["Temperatura", (v) => (v.temperature != null ? `${String(v.temperature).replace(".", ",")} °C` : null)],
-  ["Peso", (v) => (v.weightKg != null ? `${String(v.weightKg).replace(".", ",")} kg` : null)],
-  ["Altura", (v) => (v.heightCm != null ? `${v.heightCm} cm` : null)],
-  ["IMC", (v) => (v.bmi != null ? String(v.bmi).replace(".", ",") : null)],
-];
-
-function List({ items }) {
-  return items?.length ? <ul className="ficha-list">{items.map((i) => <li key={i}>{i}</li>)}</ul> : <span className="muted">Nenhum registrado</span>;
-}
 
 /** Ficha completa de um atendimento da farmácia, com histórico e versão para imprimir. */
 export default function Ficha() {
@@ -83,7 +39,7 @@ export default function Ficha() {
   const p = record.patient ?? {};
   const risk = RISK[record.risk];
   const status = STATUS[visit.status];
-  const vitals = VITALS.map(([label, fmt]) => [label, fmt(record.vitals ?? {})]).filter(([, v]) => v);
+  const vitals = vitalsOf(record.vitals);
   const years = age(p.birthDate);
 
   return (

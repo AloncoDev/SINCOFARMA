@@ -22,3 +22,18 @@ export const WEEK_NAMES = [
   "Sábado",
   "Domingo",
 ];
+
+/** Encaminhamentos a médico (backend/src/painel/comum/encaminhamentos.py). */
+export const REFERRAL_STATUS = {
+  sent: { label: "Aguardando leitura", short: "Enviado", tone: "blue" },
+  read: { label: "Lido pelo médico", short: "Lido", tone: "blue" },
+  answered: { label: "Respondido", short: "Respondido", tone: "green" },
+  declined: { label: "Recusado pelo médico", short: "Recusado", tone: "amber" },
+  cancelled: { label: "Cancelado pela farmácia", short: "Cancelado", tone: "gray" },
+};
+/** Ainda sem resposta: o médico pode responder e a farmácia, cancelar. */
+export const REFERRAL_OPEN = ["sent", "read"];
+export const PRIORITIES = {
+  rotina: { label: "Rotina" },
+  urgente: { label: "Urgente" },
+};
