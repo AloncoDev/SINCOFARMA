@@ -32,6 +32,8 @@ export function ClinicProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  // dia aberto na tela de Atendimentos (hoje vem do dashboard; os outros, daqui)
+  const [day, setDay] = useState({ key: null, visits: [], summary: null, truncated: false, status: "idle", error: null });
   const online = useOnline();
   const { user } = useAuth();
   const ownUnit = pode(user, "ver_atendimentos") && user?.unit ? user.unit : null;
@@ -130,6 +132,22 @@ export function ClinicProvider({ children }) {
     return fetchDashboard();
   }, [fetchDashboard]);
 
+  /** Carrega os atendimentos de um dia anterior ("aaaa-mm-dd"). Hoje usa a lista do dashboard. */
+  const loadDay = useCallback((key) => {
+    setDay((d) => ({ ...d, key, status: "loading", error: null }));
+    return repository.listVisits(key).then(
+      (result) => {
+        if (!alive.current) return;
+        // ignora a resposta se a pessoa já trocou de dia
+        setDay((d) => (d.key === key ? { key, visits: result.visits, summary: result.summary, truncated: !!result.truncated, status: "ready", error: null } : d));
+      },
+      (err) => {
+        if (!alive.current) return;
+        setDay((d) => (d.key === key ? { ...d, visits: [], summary: null, status: "error", error: friendly(err, "Não foi possível carregar os atendimentos do dia.") } : d));
+      }
+    );
+  }, []);
+
   /* ---------- operações ---------- */
   const addVisit = useCallback(
     async (payload, clinical = null) => {
@@ -153,17 +171,23 @@ export function ClinicProvider({ children }) {
   const updateVisit = useCallback(
     async (id, patch) => {
       // otimista: aplica já e desfaz se o servidor recusar
+      // o atendimento pode estar na lista de hoje ou na do dia aberto em Atendimentos
       let previous;
-      setData((d) => {
-        previous = d.visits.find((v) => v.id === id);
-        return { ...d, visits: d.visits.map((v) => (v.id === id ? { ...v, ...patch } : v)) };
+      const apply = (fn) => {
+        const map = (list) => list.map((v) => (v.id === id ? fn(v) : v));
+        setData((d) => ({ ...d, visits: map(d.visits) }));
+        setDay((d) => ({ ...d, visits: map(d.visits) }));
+      };
+      apply((v) => {
+        previous = v;
+        return { ...v, ...patch };
       });
       try {
         const updated = await repository.updateVisit(id, patch);
-        setData((d) => ({ ...d, visits: d.visits.map((v) => (v.id === id ? { ...v, ...updated } : v)) }));
+        apply((v) => ({ ...v, ...updated }));
         return updated;
       } catch (err) {
-        if (previous) setData((d) => ({ ...d, visits: d.visits.map((v) => (v.id === id ? previous : v)) }));
+        if (previous) apply(() => previous);
         notify(friendly(err, "Não foi possível salvar a alteração."), "error");
         throw err;
       }
@@ -216,6 +240,10 @@ export function ClinicProvider({ children }) {
     return patientDataHidden && t ? { ...s, todayTotal: t.total, waiting: t.progress, urgentToday: t.urgent } : s;
   }, [data.visits, data.baseline, data.week, data.todaySummary, patientDataHidden]);
 
+  const selectedVisit = useMemo(
+    () => (selectedId ? data.visits.find((v) => v.id === selectedId) ?? day.visits.find((v) => v.id === selectedId) ?? null : null),
+    [selectedId, data.visits, day.visits]
+  );
   const openVisit = useCallback((id) => setSelectedId(id), []);
   const closeVisit = useCallback(() => setSelectedId(null), []);
 
@@ -242,10 +270,13 @@ export function ClinicProvider({ children }) {
       syncing,
       resetDemo,
       selectedId,
+      selectedVisit,
       openVisit,
       closeVisit,
+      day,
+      loadDay,
     }),
-    [status, loadError, load, online, data, units, viewUnit, chooseUnit, patientDataHidden, stats, notify, addVisit, updateVisit, syncRnds, syncing, resetDemo, selectedId, openVisit, closeVisit]
+    [status, loadError, load, online, data, units, viewUnit, chooseUnit, patientDataHidden, stats, notify, addVisit, updateVisit, syncRnds, syncing, resetDemo, selectedId, selectedVisit, openVisit, closeVisit, day, loadDay]
   );
   const search = useMemo(() => ({ query, setQuery }), [query]);
   const toastValue = useMemo(() => ({ toasts, dismissToast }), [toasts, dismissToast]);

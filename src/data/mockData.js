@@ -37,3 +37,23 @@ export const baseline = {
   seedCounts: countBy(seedVisits),
   seedCount: seedVisits.length,
 };
+
+// Dias anteriores na demonstração: montados a partir deste conjunto, sempre
+// iguais para o mesmo dia (ver archiveFor no mockRepository).
+export const archivePool = [
+  { name: "Roberto Alves Cunha", complaint: "Pico hipertensivo assintomático", signs: "PA 162/98 mmHg · Sem cefaleia", status: "referred", risk: "amarelo" },
+  { name: "Fernanda Lopes Vieira", complaint: "Dor de garganta e Febre", signs: "Tax 38.1 °C · Placas amigdalianas", status: "referred", risk: "verde" },
+  { name: "Sebastião Ramos Filho", complaint: "Controle glicêmico de rotina", signs: "Glicemia capilar 132 mg/dL", status: "done", risk: "azul" },
+  { name: "Juliana Moreira Castro", complaint: "Cólica menstrual intensa", signs: "Dor 7/10 · Sem sinais de alarme", status: "done", risk: "verde" },
+  { name: "Antônio Batista Neves", complaint: "Dor torácica em aperto", signs: "PA 158/96 mmHg · Sudorese", status: "referred", risk: "laranja", urgent: true, redFlags: ["Dor torácica"] },
+  { name: "Camila Duarte Freitas", complaint: "Rinite alérgica sazonal", signs: "Espirros e prurido nasal", status: "done", risk: "azul" },
+  { name: "Gustavo Henrique Prado", complaint: "Entorse leve de tornozelo", signs: "Edema discreto · Deambula sem ajuda", status: "done", risk: "verde" },
+  { name: "Rita de Cássia Monteiro", complaint: "Revisão de medicamentos contínuos", signs: "6 medicamentos em uso", status: "progress", risk: "azul" },
+  { name: "Marcos Vinícius Teles", complaint: "Diarreia aguda", signs: "Hidratado · Sem sangue nas fezes", status: "done", risk: "verde" },
+  { name: "Patrícia Gomes Arruda", complaint: "Cefaleia com visão turva", signs: "PA 174/112 mmHg", status: "referred", risk: "laranja", urgent: true, redFlags: ["PA ≥ 180/110 ou sintomas"] },
+  { name: "Eduardo Sampaio Reis", complaint: "Tosse seca há 5 dias", signs: "SpO2 97% · Sem febre", status: "progress", risk: "verde" },
+  { name: "Luciana Barros Quintela", complaint: "Queimadura solar leve", signs: "Eritema sem bolhas", status: "done", risk: "azul" },
+  { name: "Francisco das Chagas Lima", complaint: "Acompanhamento de anticoagulante", signs: "Sem sangramentos", status: "progress", risk: "azul" },
+  { name: "Beatriz Cardoso Paiva", complaint: "Conjuntivite", signs: "Secreção clara · Sem dor ocular", status: "done", risk: "verde" },
+];
+export const archiveRts = ["Dra. Ana Souza", "Dra. Ana Souza", "Dr. Rafael Mendes"];

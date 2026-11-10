@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isSameDay, parseBrDate, monthLabel, startOfDay } from "./dates";
+import { isSameDay, parseBrDate, monthLabel, startOfDay, dayKey, fromDayKey, shiftDay, dayLabel } from "./dates";
 
 describe("dates", () => {
   it("compara dias ignorando a hora", () => {
@@ -23,5 +23,21 @@ describe("dates", () => {
   it("zera a hora em startOfDay", () => {
     const d = startOfDay(new Date(2026, 9, 28, 17, 30));
     expect([d.getHours(), d.getMinutes()]).toEqual([0, 0]);
+  });
+
+  it("converte dias no formato da API e soma dias atravessando o mês", () => {
+    expect(dayKey(new Date(2026, 10, 3, 22, 0))).toBe("2026-11-03");
+    expect(fromDayKey("2026-02-30")).toBeNull();
+    expect(fromDayKey("03/11/2026")).toBeNull();
+    expect(shiftDay("2026-11-01", -1)).toBe("2026-10-31");
+    expect(shiftDay("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("nomeia o dia (hoje, ontem ou data por extenso)", () => {
+    const now = new Date(2026, 10, 10, 9, 0);
+    expect(dayLabel("2026-11-10", now)).toBe("Hoje");
+    expect(dayLabel("2026-11-09", now)).toBe("Ontem");
+    expect(dayLabel("2026-11-07", now)).toBe("Sábado, 7 de novembro");
+    expect(dayLabel("2025-11-07", now)).toBe("Sexta-feira, 7 de novembro de 2025");
   });
 });

@@ -1,8 +1,8 @@
 // Repositório simulado: mesma interface do apiRepository, dados no localStorage.
 // Usado quando VITE_API_URL não está definida.
-import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit } from "./mockData";
-import { isVisit } from "./stats";
-import { timeLabel } from "../utils/dates";
+import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts } from "./mockData";
+import { isVisit, countBy } from "./stats";
+import { timeLabel, dayKey, fromDayKey } from "../utils/dates";
 
 const KEY = "sinco:clinic";
 const SCHEMA = 2;
@@ -48,6 +48,49 @@ function seedsForToday() {
     at.setHours(h, m, 0, 0);
     return { ...v, at: at.toISOString() };
   });
+}
+
+/** Número de 0 a 1 sempre igual para a mesma semente (dias anteriores estáveis). */
+function seeded(seed) {
+  let h = 2166136261;
+  for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+/** Atendimentos fictícios de um dia anterior: leitura só (não foram registrados por quem vê). */
+function archiveFor(key) {
+  const day = fromDayKey(key);
+  const rand = seeded(key);
+  const weekday = (day.getDay() + 6) % 7; // segunda = 0
+  const count = Math.max(2, Math.round(weekBase[weekday] / 3 + rand() * 3));
+  const pool = [...archivePool].sort(() => rand() - 0.5);
+  const visits = Array.from({ length: count }, (_, i) => {
+    const base = pool[i % pool.length];
+    const at = new Date(day);
+    at.setHours(8, 0, 0, 0);
+    at.setMinutes(Math.round(((i + rand() * 0.8) / count) * 600)); // 8h às 18h
+    return {
+      ...base,
+      id: `a${key.replaceAll("-", "")}-${i}`,
+      cpf: `***.***.***-${String(Math.floor(rand() * 90) + 10)}`,
+      rt: archiveRts[Math.floor(rand() * archiveRts.length)],
+      at: at.toISOString(),
+      time: timeLabel(at),
+      redFlags: base.redFlags ?? [],
+      mine: false,
+    };
+  });
+  return visits.reverse(); // mais recentes primeiro, como a API
+}
+
+/** Dia de um atendimento fictício ("a20261107-3" -> "2026-11-07"). */
+function archiveDay(id) {
+  const m = /^a(\d{4})(\d{2})(\d{2})-/.exec(id);
+  return m && fromDayKey(`${m[1]}-${m[2]}-${m[3]}`) ? `${m[1]}-${m[2]}-${m[3]}` : null;
 }
 
 function fresh() {
@@ -110,6 +153,18 @@ export const mockRepository = {
       week: weekBase,
       historicAverage,
       unit,
+    };
+  },
+
+  /** Atendimentos de um dia ("aaaa-mm-dd"). Hoje: os do navegador; antes: fictícios e estáveis. */
+  async listVisits(day) {
+    await wait(LATENCY);
+    const visits = day === dayKey() ? current().visits : archiveFor(day);
+    return {
+      day,
+      visits,
+      summary: { total: visits.length, ...countBy(visits), urgent: visits.filter((v) => v.urgent).length },
+      truncated: false,
     };
   },
 
@@ -215,7 +270,8 @@ export const mockRepository = {
   /** Ficha do atendimento: a demonstração só guarda o resumo, então a ficha sai parcial. */
   async getVisitRecord(id) {
     await wait(LATENCY);
-    const visit = current().visits.find((v) => v.id === id);
+    const old = archiveDay(id);
+    const visit = current().visits.find((v) => v.id === id) ?? (old ? archiveFor(old) : []).find((v) => v.id === id);
     if (!visit) throw new Error("Atendimento não encontrado.");
     return {
       visit,

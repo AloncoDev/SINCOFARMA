@@ -1,0 +1,123 @@
+/* Atendimentos: navegação por dia + resumo que filtra a tabela */
+
+.day-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.day-step {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--blue-900);
+  cursor: pointer;
+  transition: background var(--dur-med), border-color var(--dur-med), transform var(--dur-fast) var(--ease-out);
+}
+.day-step:hover:not(:disabled) { background: #eaf1fa; border-color: #c9d5e4; }
+.day-step:active:not(:disabled) { transform: scale(0.94); }
+.day-step:disabled { opacity: 0.4; cursor: not-allowed; }
+.day-step:focus-visible { outline: 0; box-shadow: 0 0 0 4px rgba(26, 111, 181, 0.25); }
+
+.day-title { display: flex; flex-direction: column; min-width: 0; }
+.day-title strong { font-size: 16px; font-weight: 700; color: var(--blue-900); }
+.day-title small { font-size: 12.5px; color: var(--muted); }
+
+.day-tools { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.day-today { height: 38px; }
+.day-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 10px 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--blue-700);
+  cursor: pointer;
+}
+.day-pick:focus-within { outline: 2px solid var(--blue-700); outline-offset: 2px; }
+.day-pick input {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue-900);
+  cursor: pointer;
+}
+.day-pick input:focus { outline: 0; }
+/* o ícone do calendário é o do próprio campo (abre o seletor do navegador) */
+.day-pick input::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.75; }
+.day-pick input::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+/* resumo: um cartão por desfecho; clicar filtra a tabela */
+.day-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.day-stat {
+  --tone: var(--blue-700);
+  --tint: #eaf1fa;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  transition: border-color var(--dur-med), box-shadow var(--dur-med) var(--ease-out), transform var(--dur-fast) var(--ease-out), background var(--dur-med);
+}
+.day-stat:hover { border-color: #c9d5e4; box-shadow: 0 8px 18px -12px rgba(10, 37, 64, 0.35); }
+.day-stat:active { transform: scale(0.98); }
+.day-stat:focus-visible { outline: 0; box-shadow: 0 0 0 4px rgba(26, 111, 181, 0.25); }
+.day-stat.is-active { border-color: var(--tone); background: var(--tint); box-shadow: inset 0 0 0 1px var(--tone); }
+.day-stat-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #475569;
+}
+.day-stat-label i { width: 7px; height: 7px; border-radius: 50%; background: var(--tone); }
+.day-stat-label svg { color: var(--tone); }
+.day-stat strong {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--blue-900);
+  font-variant-numeric: tabular-nums;
+}
+.day-stat--navy { --tone: var(--blue-700); --tint: #eaf1fa; }
+.day-stat--green { --tone: #15803d; --tint: #effaf4; }
+.day-stat--amber { --tone: #b45309; --tint: #fffbeb; }
+.day-stat--blue { --tone: #1d4ed8; --tint: #eef4fe; }
+.day-stat--red { --tone: var(--c-red); --tint: #fef2f2; }
+
+.day-note { background: #eef4fe; border-color: #cfe0fb; color: #1d4ed8; }
+
+.table-card.is-loading tbody { opacity: 0.55; transition: opacity var(--dur-med); }
+
+@media (max-width: 1024px) {
+  .day-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .day-nav { flex-wrap: wrap; }
+  .day-tools { width: 100%; margin-left: 0; }
+  .day-pick { flex: 1 1 auto; }
+  .day-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .day-stat:first-child { grid-column: 1 / -1; }
+}

@@ -125,6 +125,28 @@ def criar_visita(event, _context):
     return 201, visit
 
 
+DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+VISITS_PER_DAY = 300
+
+
+@handler
+def listar_visitas(event, _context):
+    """GET /visits?dia=aaaa-mm-dd: atendimentos de um dia da própria farmácia (padrão: hoje).
+
+    Só a farmácia do atendimento vê a lista (a administração fica com os números do dashboard).
+    """
+    caller = caller_from_event(event)
+    caller.exigir("ver_atendimentos")
+    today = tempo.day_key(tempo.now())
+    day = ((event.get("queryStringParameters") or {}).get("dia") or today).strip()
+    # comparação de texto vale para aaaa-mm-dd; dia futuro não tem atendimento
+    if not DAY.fullmatch(day) or not tempo.valid_day(day) or day > today:
+        raise HttpError(400, "Dia inválido.")
+    visits = repo.visits_of_day(caller.unit_id, day, caller.sub, limit=VISITS_PER_DAY)
+    summary = {"total": len(visits), **_count(visits), "urgent": sum(1 for v in visits if v["urgent"])}
+    return 200, {"day": day, "visits": visits, "summary": summary, "truncated": len(visits) >= VISITS_PER_DAY}
+
+
 @handler
 def atualizar_visita(event, _context):
     """PATCH /visits/{id}: troca desfecho e/ou Red Flag, com auditoria (só quem registrou)."""

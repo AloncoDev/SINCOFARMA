@@ -3,6 +3,8 @@
 //   GET   /dashboard[?unidade=] -> { visits, todaySummary, lastSync, rndsPending, baseline, week, historicAverage, unit }
 //                                  (administração: `?unidade=` e `visits` vazio, só números)
 //   GET   /unidades             -> { units: [{ id, name }] } (só administração)
+//   GET   /visits[?dia=aaaa-mm-dd] -> { day, visits, summary: { total, done, referred, progress, urgent }, truncated }
+//                                  (só a própria farmácia; padrão: hoje)
 //   POST  /visits               { ...summary, clinical } -> visit (resumo) criado
 //   PATCH /visits/:id           -> visit atualizado
 //   GET   /visits/:id           -> { visit, record (ficha clínica), history } (farmácia do atendimento)
@@ -31,6 +33,7 @@ export const apiRepository = {
   name: "api",
   loadDashboard: (unit) => api(unit ? `/dashboard?unidade=${encodeURIComponent(unit)}` : "/dashboard"),
   listUnits: () => api("/unidades").then((r) => r.units),
+  listVisits: (day) => api(`/visits?${new URLSearchParams({ dia: day })}`),
   createVisit: (summary, clinical) => api("/visits", { method: "POST", body: JSON.stringify({ ...summary, clinical }) }),
   updateVisit: (id, patch) => api(`/visits/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) }),
   syncRnds: () => api("/rnds/sync", { method: "POST" }),

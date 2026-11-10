@@ -23,6 +23,7 @@ const FILTERS = [
   { key: "done", label: STATUS.done.label },
   { key: "referred", label: STATUS.referred.label },
   { key: "progress", label: STATUS.progress.label },
+  { key: "urgent", label: "Só Red Flag" },
 ];
 
 const ACTIONS = {
@@ -38,21 +39,31 @@ export default function VisitsTable({
   lockedFilter,
   showViewAll = false,
   delay = 6,
+  // lista de fora (ex.: um dia anterior em Atendimentos); padrão: a de hoje
+  visits: visitsProp,
+  // filtro controlado por quem usa a tabela (opcional)
+  filter: filterProp,
+  onFilterChange,
+  emptyText = "Nenhum atendimento com esse desfecho.",
+  loading = false,
 }) {
-  const { visits, openVisit } = useClinic();
+  const { visits: todayVisits, openVisit } = useClinic();
+  const visits = visitsProp ?? todayVisits;
   const { query, setQuery } = useSearch();
-  const [filter, setFilter] = useState(lockedFilter ?? "all");
+  const [ownFilter, setOwnFilter] = useState(lockedFilter ?? "all");
+  const filter = filterProp ?? ownFilter;
+  const setFilter = onFilterChange ?? setOwnFilter;
   const [expanded, setExpanded] = useState(false);
   const listPage = isReady("/atendimentos");
 
   const filtered = visits
-    .filter((v) => filter === "all" || v.status === filter)
+    .filter((v) => filter === "all" || (filter === "urgent" ? v.urgent : v.status === filter))
     .filter((v) => matchesQuery(v, query));
   const cut = limit && !query && !expanded;
   const visible = cut ? filtered.slice(0, limit) : filtered;
 
   return (
-    <SpotlightCard index={delay} className="table-card">
+    <SpotlightCard index={delay} className={`table-card${loading ? " is-loading" : ""}`} aria-busy={loading}>
       <header className="card-head">
         <div>
           <h2>{title}</h2>
@@ -204,9 +215,15 @@ export default function VisitsTable({
                 <td colSpan={6} className="empty">
                   <SearchX size={20} />
                   <span>
-                    {query
-                      ? "Nenhum atendimento encontrado para essa busca."
-                      : "Nenhum atendimento com esse desfecho."}
+                    {loading
+                      ? "Carregando atendimentos..."
+                      : query
+                        ? "Nenhum atendimento encontrado para essa busca."
+                        : filter === "all"
+                          ? emptyText
+                          : filter === "urgent"
+                            ? "Nenhum atendimento com Red Flag."
+                            : "Nenhum atendimento com esse desfecho."}
                   </span>
                 </td>
               </tr>

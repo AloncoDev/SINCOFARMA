@@ -39,6 +39,15 @@ def previous_days(ref: datetime, n: int) -> list[date]:
     return [today - timedelta(days=i) for i in range(1, n + 1)]
 
 
+def valid_day(text: str) -> bool:
+    """'aaaa-mm-dd' existe no calendário?"""
+    try:
+        date.fromisoformat(text)
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
 def parse_br_date(text: str) -> date | None:
     """'dd/mm/aaaa' -> date, ou None se invalida."""
     try:

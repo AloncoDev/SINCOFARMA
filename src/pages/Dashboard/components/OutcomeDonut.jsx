@@ -104,7 +104,9 @@ export default function OutcomeDonut({ outcomes }) {
             style={{ "--c": s.color }}
           >
             {(() => {
-              const to = s.key === "referred" ? "/encaminhamentos" : "/atendimentos";
+              const page = s.key === "referred" ? "/encaminhamentos" : "/atendimentos";
+              // Atendimentos abre já filtrada pelo desfecho
+              const to = page === "/atendimentos" ? `${page}?desfecho=${s.key}` : page;
               const inner = (
                 <>
                   <i className="sq" />
@@ -114,7 +116,7 @@ export default function OutcomeDonut({ outcomes }) {
                 </>
               );
               const label = `${s.label}: ${s.percent}%, ${s.count} atendimentos`;
-              return isReady(to) ? (
+              return isReady(page) ? (
                 <Link to={to} className="legend-link" aria-label={label}>{inner}</Link>
               ) : (
                 <button

@@ -193,3 +193,49 @@ def test_rnds_responde_nao_implementado(aws):
     resp = aws.sincronizar_rnds(event("POST", "/rnds/sync"), None)
     assert resp["statusCode"] == 501
     assert "RNDS" in body_of(resp)["message"]
+
+
+# ---------------------------------------------------------------- lista por dia
+
+def list_day(api, day=None, **kw):
+    return api.listar_visitas(event("GET", "/visits", query={"dia": day} if day else None, **kw), None)
+
+
+def test_lista_do_dia_com_resumo(aws):
+    post_visit(aws)
+    clin = copy.deepcopy(VALID_CLINICAL)
+    clin["redFlags"] = ["Dispneia"]
+    post_visit(aws, clin, status="referred")
+
+    data = body_of(list_day(aws))
+    assert len(data["visits"]) == 2
+    assert data["visits"][0]["status"] == "referred"  # mais recente primeiro
+    assert data["summary"] == {"total": 2, "done": 0, "referred": 1, "progress": 1, "urgent": 1}
+    assert data["truncated"] is False
+    assert all(v["mine"] for v in data["visits"])
+
+
+def test_lista_de_dia_sem_atendimento(aws):
+    post_visit(aws)
+    data = body_of(list_day(aws, "2024-01-15"))
+    assert data["day"] == "2024-01-15"
+    assert data["visits"] == []
+    assert data["summary"]["total"] == 0
+
+
+def test_lista_recusa_dia_invalido_ou_futuro(aws):
+    for day in ["2024-02-30", "15/01/2024", "2024-1-5", "2999-01-01", "../x"]:
+        assert list_day(aws, day)["statusCode"] == 400, day
+
+
+def test_lista_isolada_por_unidade(aws):
+    post_visit(aws)
+    other = body_of(list_day(aws, groups="[unidade:taguatinga papel:farmaceutico]"))
+    assert other["visits"] == []
+
+
+def test_lista_so_para_quem_ve_atendimentos(aws):
+    post_visit(aws)
+    assert list_day(aws, groups="[papel:admin]")["statusCode"] == 403
+    assert list_day(aws, groups="[papel:medico]")["statusCode"] == 403
+    assert list_day(aws, groups="[papel:farmaceutico]")["statusCode"] == 403  # sem farmácia

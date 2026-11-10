@@ -18,6 +18,7 @@ tests/                         pytest com DynamoDB e Cognito simulados
 | Método | Rota | O que faz |
 |---|---|---|
 | GET | `/dashboard` | atendimentos de hoje + indicadores da unidade. Admin: `?unidade=<id>`, só agregados (`visits` vazio, resumo em `todaySummary`) |
+| GET | `/visits?dia=aaaa-mm-dd` | atendimentos de um dia da própria farmácia (padrão: hoje), com resumo por desfecho; dia futuro ou inválido → 400. Só farmacêutico com farmácia |
 | POST | `/visits` | registra triagem: valida, emite protocolo, grava resumo, registro clínico e auditoria |
 | GET | `/visits/{id}` | ficha completa (registro clínico + histórico), só para farmacêutico da farmácia do atendimento |
 | PATCH | `/visits/{id}` | troca desfecho e/ou Red Flag, só de quem registrou (concorrência otimista + auditoria) |

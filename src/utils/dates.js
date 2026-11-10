@@ -33,3 +33,40 @@ export function startOfDay(date) {
   d.setHours(0, 0, 0, 0);
   return d;
 }
+
+/** Dia local no formato da API: "aaaa-mm-dd" */
+export function dayKey(date = new Date()) {
+  const d = new Date(date);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/** "aaaa-mm-dd" -> Date à meia-noite local (ou null se inválido) */
+export function fromDayKey(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key ?? "")) return null;
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d ? date : null;
+}
+
+/** Soma `n` dias a um "aaaa-mm-dd" */
+export function shiftDay(key, n) {
+  const d = fromDayKey(key);
+  d.setDate(d.getDate() + n);
+  return dayKey(d);
+}
+
+/** "Hoje", "Ontem" ou "Sexta-feira, 7 de novembro" (com o ano se não for o atual) */
+export function dayLabel(key, now = new Date()) {
+  const today = dayKey(now);
+  if (key === today) return "Hoje";
+  if (key === shiftDay(today, -1)) return "Ontem";
+  const d = fromDayKey(key);
+  const s = d.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+  });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
