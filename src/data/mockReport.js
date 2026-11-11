@@ -46,8 +46,16 @@ function shuffle(list, rand) {
 
 const monthDayKeys = (month) => Array.from({ length: daysInMonth(month) }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
 
-/** Contadores de cada dia de um mês cheio da farmácia (sem considerar "hoje"). */
+// meses já gerados (o perfil não muda durante a sessão); devolve cópias porque pharmacyDays ajusta "hoje"
+const cache = new Map();
 function monthDays(p, month, current) {
+  const key = `${p.id}|${month}|${current}`;
+  if (!cache.has(key)) cache.set(key, generateMonth(p, month, current));
+  return cache.get(key).map((d) => ({ ...d }));
+}
+
+/** Contadores de cada dia de um mês cheio da farmácia (sem considerar "hoje"). */
+function generateMonth(p, month, current) {
   const back = (Number(current.slice(0, 4)) * 12 + Number(current.slice(5))) - (Number(month.slice(0, 4)) * 12 + Number(month.slice(5)));
   const { volume, history, mix, urgent, minutes } = p.profile;
   const keys = monthDayKeys(month);
