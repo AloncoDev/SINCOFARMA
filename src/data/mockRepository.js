@@ -1,8 +1,9 @@
 // Repositório simulado: mesma interface do apiRepository, dados no localStorage.
 // Usado quando VITE_API_URL não está definida.
-import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts, referralSeeds } from "./mockData";
+import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts, referralSeeds, demoPharmacies } from "./mockData";
 import { isVisit, countBy } from "./stats";
 import { timeLabel, dayKey, fromDayKey } from "../utils/dates";
+import { seeded, buildReport, pharmacyDays, sumCounts } from "./mockReport";
 
 const KEY = "sinco:clinic";
 const SCHEMA = 2;
@@ -14,6 +15,8 @@ const DEMO_DOCTORS = [
   { id: "demo-medico-2", name: "Dra. Carla Nunes" },
 ];
 let referrals = seedReferrals();
+// farmácias criadas ou editadas na demonstração (em memória)
+let pharmacies = demoPharmacies.map((p) => ({ ...p }));
 // pedidos de privacidade (LGPD) da demonstração
 let privacyRequests = [];
 let demoUsers = [
@@ -82,14 +85,18 @@ function seedsForToday() {
   });
 }
 
-/** Número de 0 a 1 sempre igual para a mesma semente (dias anteriores estáveis). */
-function seeded(seed) {
-  let h = 2166136261;
-  for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-  return () => {
-    h = Math.imul(h ^ (h >>> 15), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+/** Contadores de hoje da farmácia da demo (atendimentos do navegador), no formato `#STATS`. */
+function liveCounts() {
+  const today = current().visits;
+  const c = countBy(today);
+  return {
+    total: today.length,
+    done: c.done,
+    referred: c.referred,
+    progress: c.progress,
+    urgent: today.filter((v) => v.urgent).length,
+    durSum: today.length * baseline.triageMinutes * 60,
+    durCount: today.length,
   };
 }
 
@@ -172,7 +179,7 @@ export const mockRepository = {
   // a demonstração tem uma farmácia só; `unit` é ignorado
   async listUnits() {
     await wait(LATENCY);
-    return [{ id: "demo", name: unit }];
+    return pharmacies.map((p) => ({ id: p.id, name: p.name })).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   },
 
   async loadDashboard() {
@@ -326,6 +333,56 @@ export const mockRepository = {
   async listAudit(month) {
     await wait(LATENCY);
     return { month, events: [], next: null, units: [{ id: "demo", name: unit }] };
+  },
+
+  /* ---------- farmácias (administração; em memória) ---------- */
+  async listPharmacies() {
+    await wait(LATENCY);
+    const now = new Date();
+    const live = liveCounts();
+    const units = pharmacies
+      .map(({ profile, ...p }) => {
+        const days = pharmacyDays({ ...p, profile }, dayKey(now).slice(0, 7), now, p.id === "demo" ? live : null);
+        const m = sumCounts(days);
+        const t = days.at(-1)?.day === dayKey(now) ? days.at(-1) : { total: 0, urgent: 0 };
+        return {
+          ...p,
+          today: { total: t.total, urgent: t.urgent },
+          month: {
+            total: m.total,
+            done: m.done,
+            referred: m.referred,
+            progress: m.progress,
+            urgent: m.urgent,
+            triageMinutes: m.durCount ? Math.round((m.durSum / m.durCount / 60) * 10) / 10 : null,
+          },
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    return { month: dayKey(now).slice(0, 7), units };
+  },
+
+  /* ---------- relatórios (administração; números gerados em mockReport) ---------- */
+  async report(month, unit) {
+    await wait(LATENCY);
+    return buildReport(pharmacies, month, unit, new Date(), liveCounts());
+  },
+
+  async createPharmacy({ id, name, monthGoal, triageGoalMin }) {
+    await wait(LATENCY);
+    if (pharmacies.some((p) => p.id === id)) {
+      throw Object.assign(new Error("Já existe uma farmácia com este código."), { data: { details: { fields: { id: "Código em uso." } } } });
+    }
+    const created = { id, name, monthGoal, triageGoalMin, pharmacists: { active: 0, pending: 0 } };
+    pharmacies = [...pharmacies, created];
+    return (await this.listPharmacies()).units.find((p) => p.id === id);
+  },
+
+  async updatePharmacy(id, change) {
+    await wait(LATENCY / 2);
+    if (!pharmacies.some((p) => p.id === id)) throw new Error("Farmácia não encontrada.");
+    pharmacies = pharmacies.map((p) => (p.id === id ? { ...p, ...change } : p));
+    return (await this.listPharmacies()).units.find((p) => p.id === id);
   },
 
   /* ---------- usuários (administração; em memória) ---------- */

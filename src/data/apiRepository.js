@@ -19,6 +19,16 @@
 //   GET   /usuarios       -> { users: [{ id, name, email, cpf (mascarado), crf, roles, unit, enabled, pending }], units }
 //   POST  /usuarios       { cpf, name, email, roles, unit?, crf? } -> usuário (convite por e-mail)
 //   PATCH /usuarios/:id   { roles?, unit?, enabled?, resetMfa?, resendInvite? } -> usuário
+// Farmácias (administração; só números agregados, sem pacientes):
+//   GET   /farmacias          -> { month, units: [{ id, name, monthGoal, triageGoalMin, pharmacists: { active, pending },
+//                                  today: { total, urgent }, month: { total, done, referred, progress, urgent, triageMinutes } }] }
+//   POST  /farmacias          { id, name, monthGoal, triageGoalMin } -> farmácia
+//   PATCH /farmacias/:id      { name?, monthGoal?, triageGoalMin? } -> farmácia
+// Relatórios (administração; só contadores agregados):
+//   GET   /relatorios?mes=aaaa-mm[&farmacia=] -> { month, today, unit, units: [{ id, name, monthGoal, triageGoalMin }],
+//                                  days: [{ day, ...contadores }], months: [{ month, ...contadores }] (12, até `mes`),
+//                                  byUnit: [{ id, ...contadores, previous: contadores }] }
+//                                  contadores = { total, done, referred, progress, urgent, durSum, durCount }
 //   GET   /auditoria[?mes=aaaa-mm&inicio=] -> { month, events, next, units } (administração; sem dados de paciente)
 // LGPD (direitos do titular):
 //   GET   /me/dados                -> tudo o que o painel guarda sobre quem pede (JSON para baixar)
@@ -45,6 +55,10 @@ export const apiRepository = {
   getVisitRecord: (id) => api(`/visits/${encodeURIComponent(id)}`),
   listAudit: (month, start) =>
     api(`/auditoria?${new URLSearchParams({ mes: month, ...(start ? { inicio: start } : {}) })}`),
+  listPharmacies: () => api("/farmacias"),
+  createPharmacy: (data) => api("/farmacias", { method: "POST", body: JSON.stringify(data) }),
+  updatePharmacy: (id, change) => api(`/farmacias/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(change) }),
+  report: (month, unit) => api(`/relatorios?${new URLSearchParams({ mes: month, ...(unit ? { farmacia: unit } : {}) })}`),
   listUsers: () => api("/usuarios"),
   createUser: (data) => api("/usuarios", { method: "POST", body: JSON.stringify(data) }),
   updateUser: (id, change) => api(`/usuarios/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(change) }),

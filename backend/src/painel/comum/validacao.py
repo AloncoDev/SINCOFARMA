@@ -442,3 +442,52 @@ def validar_cpf_titular(body: dict) -> str:
     if not is_valid_cpf(cpf):
         raise HttpError(422, "CPF inválido.", {"fields": {"cpf": "CPF inválido."}})
     return cpf
+
+
+# ---------------------------------------------------------------- farmácias (administração)
+
+UNIT_GOALS = {"monthGoal": (0, 100000, "Meta mensal entre 0 e 100.000 atendimentos."), "triageGoalMin": (1, 120, "Meta de triagem entre 1 e 120 minutos.")}
+
+
+def _goal(body: dict, key: str, erros: Erros, *, required: bool) -> int | None:
+    value = body.get(key)
+    if value is None or value == "":
+        if required:
+            erros.add(key, "Obrigatório.")
+        return None
+    lo, hi, msg = UNIT_GOALS[key]
+    if isinstance(value, bool) or not isinstance(value, int) or not lo <= value <= hi:
+        erros.add(key, msg)
+        return None
+    return value
+
+
+def validar_farmacia(body: dict) -> dict:
+    """POST /farmacias: código (vira o grupo unidade:<código>), nome e metas."""
+    erros = Erros()
+    unit = body.get("id")
+    if not isinstance(unit, str) or not UNIT_ID.match(unit):
+        erros.add("id", "Use letras minúsculas, números e hífen (ex.: asa-sul).")
+    name = _text(body, "name", erros, "name", required=True, min_len=3, max_len=120)
+    month = _goal(body, "monthGoal", erros, required=True)
+    triage = _goal(body, "triageGoalMin", erros, required=True)
+    erros.raise_if_any()
+    return {"id": unit, "name": name, "monthGoal": month, "triageGoalMin": triage}
+
+
+def validar_mudanca_farmacia(body: dict) -> dict:
+    """PATCH /farmacias/{id}: nome e metas (o código não muda: é o vínculo dos usuários)."""
+    extra = set(body) - {"name", "monthGoal", "triageGoalMin"}
+    if extra:
+        raise HttpError(422, "Campos não permitidos.", {"fields": {k: "Não editável." for k in sorted(extra)}})
+    erros = Erros()
+    out = {}
+    if "name" in body:
+        out["name"] = _text(body, "name", erros, "name", required=True, min_len=3, max_len=120)
+    for key in UNIT_GOALS:
+        if key in body:
+            out[key] = _goal(body, key, erros, required=True)
+    erros.raise_if_any()
+    if not out:
+        raise HttpError(422, "Nada para alterar.")
+    return out

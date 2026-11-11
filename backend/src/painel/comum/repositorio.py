@@ -110,8 +110,12 @@ def visits_of_day(unit: str, day: str, viewer_sub: str, limit: int = 300) -> lis
 
 def stats_items(unit: str, days: list[str], months: list[str]) -> dict[str, dict]:
     """Contadores de vários dias/meses numa leitura em lote. Chave do retorno = PK."""
-    keys = [{"PK": pk_day(unit, d), "SK": STATS} for d in days] + [{"PK": pk_month(unit, m), "SK": STATS} for m in months]
-    unique = list({k["PK"]: k for k in keys}.values())
+    return stats_by_pk([pk_day(unit, d) for d in days] + [pk_month(unit, m) for m in months])
+
+
+def stats_by_pk(pks: list[str]) -> dict[str, dict]:
+    """Contadores (`#STATS`) de várias chaves, de 100 em 100. Chave sem contador fica de fora."""
+    unique = [{"PK": pk, "SK": STATS} for pk in dict.fromkeys(pks)]
     table = os.environ["TABELA_PAINEL"]
     found: dict[str, dict] = {}
     for start in range(0, len(unique), 100):

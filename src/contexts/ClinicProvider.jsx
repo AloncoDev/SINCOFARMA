@@ -102,10 +102,11 @@ export function ClinicProvider({ children }) {
     fetchDashboard();
   }, [fetchDashboard, units]);
 
-  // administração: carrega as farmácias e abre a primeira (quem também é farmacêutico abre a sua)
-  useEffect(() => {
-    if (!seesAllUnits) return;
-    repository.listUnits().then(
+  // administração: carrega as farmácias e abre a primeira (quem também é farmacêutico abre a sua).
+  // A tela Farmácias chama de novo depois de cadastrar ou renomear.
+  const refreshUnits = useCallback(() => {
+    if (!seesAllUnits) return Promise.resolve();
+    return repository.listUnits().then(
       (list) => {
         if (!alive.current) return;
         setUnits(list);
@@ -119,6 +120,9 @@ export function ClinicProvider({ children }) {
       }
     );
   }, [seesAllUnits, ownUnit]);
+  useEffect(() => {
+    refreshUnits();
+  }, [refreshUnits]);
 
   const chooseUnit = useCallback((id) => {
     setStatus("loading");
@@ -260,6 +264,7 @@ export function ClinicProvider({ children }) {
       units: units ?? [],
       viewUnit,
       chooseUnit,
+      refreshUnits,
       patientDataHidden,
       historicAverage: data.historicAverage,
       stats,
@@ -276,7 +281,7 @@ export function ClinicProvider({ children }) {
       day,
       loadDay,
     }),
-    [status, loadError, load, online, data, units, viewUnit, chooseUnit, patientDataHidden, stats, notify, addVisit, updateVisit, syncRnds, syncing, resetDemo, selectedId, selectedVisit, openVisit, closeVisit, day, loadDay]
+    [status, loadError, load, online, data, units, viewUnit, chooseUnit, refreshUnits, patientDataHidden, stats, notify, addVisit, updateVisit, syncRnds, syncing, resetDemo, selectedId, selectedVisit, openVisit, closeVisit, day, loadDay]
   );
   const search = useMemo(() => ({ query, setQuery }), [query]);
   const toastValue = useMemo(() => ({ toasts, dismissToast }), [toasts, dismissToast]);
