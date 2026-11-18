@@ -27,6 +27,11 @@ export const PRIVACIDADE = {
   atualizadaEm: "2026-10-29",
 };
 
+/** Termos de uso do painel. Mudou o texto? Atualize a data. */
+export const TERMOS = {
+  atualizadosEm: "2026-11-18",
+};
+
 /** Minutos sem atividade até encerrar a sessão (computador compartilhado de balcão). */
 export const IDLE_MINUTES = Number(import.meta.env.VITE_IDLE_MINUTES) || 15;
 export const IDLE_WARN_MS = 60 * 1000;

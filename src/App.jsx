@@ -22,6 +22,7 @@ const Ficha = lazy(loaders.Ficha);
 const Auditoria = lazy(loaders.Auditoria);
 const PedidosLgpd = lazy(loaders.PedidosLgpd);
 const Privacidade = lazy(loaders.Privacidade);
+const Termos = lazy(loaders.Termos);
 
 /* Depois que o app estiver logado e ocioso, baixa as outras páginas em
    segundo plano para a troca de rota ser instantânea. */
@@ -87,6 +88,7 @@ export default function App() {
         <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
         {/* política de privacidade: aberta para todos, logado ou não (LGPD, art. 9º) */}
         <Route path="/privacidade" element={<Privacidade />} />
+        <Route path="/termos" element={<Termos />} />
         <Route path="/" element={<Inicio />} />
         <Route
           element={

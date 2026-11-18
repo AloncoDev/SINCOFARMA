@@ -17,6 +17,7 @@ export const loaders = {
   Auditoria: () => import("./Auditoria/Auditoria"),
   PedidosLgpd: () => import("./PedidosLgpd/PedidosLgpd"),
   Privacidade: () => import("./Privacidade/Privacidade"),
+  Termos: () => import("./Termos/Termos"),
 };
 
 /** Páginas internas (tudo menos o login). */
