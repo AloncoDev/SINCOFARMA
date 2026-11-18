@@ -1,6 +1,6 @@
 boto3
 moto[dynamodb,cognitoidp]>=5
-pytest>=8
+pytest>=9.2.0
 tzdata
 cfn-lint
 pip-audit
