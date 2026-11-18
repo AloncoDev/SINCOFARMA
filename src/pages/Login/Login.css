@@ -608,5 +608,5 @@ label.is-focused { color: var(--blue-500); }
 
 /* link para a política de privacidade, no pé do card */
 .login-policy { margin-top: 14px; text-align: center; font-size: 12.5px; }
-.login-policy a { color: #1e6fb5; font-weight: 600; text-decoration: none; }
+.login-policy a { color: #1e6fb5; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .login-policy a:hover { text-decoration: underline; }

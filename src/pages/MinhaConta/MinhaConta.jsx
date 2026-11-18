@@ -449,6 +449,9 @@ function PrivacyCard({ open, toggle, close, notify }) {
       <Link to="/privacidade" className="lgpd-policy-link">
         <FileText size={15} aria-hidden="true" /> Política de privacidade do painel
       </Link>
+      <Link to="/termos" className="lgpd-policy-link">
+        <FileText size={15} aria-hidden="true" /> Termos de uso
+      </Link>
     </SpotlightCard>
   );
 }

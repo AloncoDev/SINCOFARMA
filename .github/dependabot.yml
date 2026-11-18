@@ -1,0 +1,36 @@
+# Avisos e PRs automáticos de atualização de dependências.
+# Correções de segurança chegam assim que saem; as atualizações comuns, uma vez
+# por semana e agrupadas, para não encher a lista de PRs.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    groups:
+      desenvolvimento:
+        dependency-type: development
+        update-types: [minor, patch]
+      producao:
+        dependency-type: production
+        update-types: [minor, patch]
+    ignore:
+      # buffer@4 é o que o amazon-cognito-identity-js espera; versões novas mudam a API
+      - dependency-name: buffer
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: pip
+    directories: [/backend, /backend/src]
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

@@ -5,6 +5,9 @@
 .policy-topbar { justify-content: space-between; }
 .policy-logo { height: 40px; width: auto; display: block; }
 .policy-back { text-decoration: none; }
+.policy-nav { display: flex; align-items: center; gap: 18px; }
+.policy-sibling { font-size: 14px; font-weight: 600; color: var(--blue-700); text-decoration: none; }
+.policy-sibling:hover { text-decoration: underline; }
 
 .policy-updated {
   padding: 6px 12px;
@@ -124,5 +127,7 @@
 @media (max-width: 620px) {
   .policy-split { grid-template-columns: minmax(0, 1fr); }
   .policy-back { padding: 0 12px; font-size: 13px; }
+  .policy-nav { gap: 12px; }
+  .policy-sibling { font-size: 13px; }
   .policy-logo { height: 32px; }
 }

@@ -10,8 +10,14 @@ export { AuthError } from "./cognito";
 
 const DEMO_PASSWORD = "12345678";
 const DEMO_USER_KEY = "user";
-// a demonstração mostra a visão do farmacêutico
-const DEMO_ACCESS = { roles: ["farmaceutico"], unit: "demo" };
+// a demonstração mostra a visão do farmacêutico; VITE_DEMO_PERFIL (medico, admin)
+// troca o perfil no build, para os testes de ponta a ponta e capturas de tela
+const DEMO_PERFIS = {
+  farmaceutico: { roles: ["farmaceutico"], unit: "demo" },
+  medico: { roles: ["medico"], unit: null },
+  admin: { roles: ["admin"], unit: null },
+};
+const DEMO_ACCESS = DEMO_PERFIS[import.meta.env.VITE_DEMO_PERFIL] ?? DEMO_PERFIS.farmaceutico;
 
 export async function login(identifier, password) {
   if (AUTH_MODE === "cognito") {

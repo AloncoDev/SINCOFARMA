@@ -661,7 +661,8 @@ export default function Login() {
               )}
 
               <motion.p className="login-policy" {...rise(9)}>
-                <Link to="/privacidade">Política de privacidade</Link>
+                Ao entrar, você aceita os <Link to="/termos">Termos de uso</Link> e a{" "}
+                <Link to="/privacidade">Política de privacidade</Link>.
               </motion.p>
             </section>
           </motion.div>
