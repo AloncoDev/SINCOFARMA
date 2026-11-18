@@ -3,3 +3,4 @@ moto[dynamodb,cognitoidp]>=5
 pytest>=8
 tzdata
 cfn-lint
+pip-audit

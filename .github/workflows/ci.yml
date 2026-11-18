@@ -31,6 +31,27 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  e2e:
+    name: Ponta a ponta (demo nos 3 perfis, CSP de produção)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      # em caso de falha: rastro de cada teste (abrir com npx playwright show-trace)
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-rastros
+          path: test-results/
+          retention-days: 7
+
   backend:
     name: Backend (testes, cfn-lint)
     runs-on: ubuntu-latest
@@ -47,5 +68,7 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q
+      # falhas de segurança conhecidas nas dependências do Python
+      - run: pip-audit -r requirements-dev.txt -r src/requirements.txt
       - run: cfn-lint --regions sa-east-1 -- template.yaml
       - run: cfn-lint --regions us-east-1 -- orcamento.yaml
