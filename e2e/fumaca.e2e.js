@@ -14,7 +14,7 @@ const CSP = vercel.headers
 const TELAS = {
   farmaceutico: ["/dashboard", "/atendimentos", "/nova-triagem", "/encaminhamentos", "/minha-conta"],
   medico: ["/encaminhamentos", "/minha-conta"],
-  admin: ["/dashboard", "/farmacias", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/minha-conta"],
+  admin: ["/dashboard", "/atendimentos", "/farmacias", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/minha-conta"],
 };
 
 const DEMO_SENHA = "12345678";
@@ -89,5 +89,24 @@ test("abre um encaminhamento (e, para o farmacêutico, a ficha do atendimento)",
     // o médico vê só o que foi encaminhado, não a ficha completa
     await expect(ficha).toHaveCount(0);
   }
+  expect(erros).toEqual([]);
+});
+
+test("administração acompanha um atendimento: quem cuidou e a situação, sem o paciente", async ({ page }, info) => {
+  test.skip(info.project.name !== "admin", "só a administração acompanha a rede");
+  const erros = await vigiar(page);
+  await entrar(page);
+  // um dia útil passado da farmácia de Ceilândia (movimento gerado e estável na demonstração)
+  await page.goto("/atendimentos?unidade=ceilandia-norte&filtro=doctor&dia=2026-11-03");
+  await expect(page.getByRole("heading", { name: "Atendimentos da rede" })).toBeVisible();
+  const linha = page.locator('tr[role="link"]').first();
+  await expect(linha).toContainText(/Dr\.|Dra\./);
+  await linha.click();
+  await expect(page).toHaveURL(/\/atendimentos\/[^/]+$/);
+  await expect(page.getByRole("heading", { name: "Linha do tempo" })).toBeVisible();
+  await expect(page.getByText("Atendimento registrado")).toBeVisible();
+  await expect(page.getByText("Encaminhado a médico")).toBeVisible();
+  // nada que identifique o paciente
+  await expect(page.locator("main")).not.toContainText(/CPF \*|\*\*\*\./);
   expect(erros).toEqual([]);
 });

@@ -28,6 +28,8 @@ const PERMISSOES = {
   gerenciar_usuarios: ["admin"],
   // cadastrar farmácias e ajustar nome e metas
   gerenciar_farmacias: ["admin"],
+  // quem cuidou de cada atendimento (farmacêutico, médico) e a situação, sem dados do paciente
+  acompanhar_atendimentos: ["admin"],
   // relatórios da rede (por dia, mês e farmácia), só contadores agregados
   ver_relatorios: ["admin"],
   ver_auditoria: ["admin"],
@@ -58,7 +60,8 @@ export function podeAlterar(user, visit) {
 // A ordem decide a tela inicial (farmacêutico e administração: Dashboard; médico: Encaminhamentos).
 const ROTAS = {
   "/dashboard": ["farmaceutico", "admin"],
-  "/atendimentos": ["farmaceutico"],
+  // farmacêutico: a lista da farmácia; administração: o acompanhamento da rede (sem pacientes)
+  "/atendimentos": ["farmaceutico", "admin"],
   "/nova-triagem": ["farmaceutico"],
   "/encaminhamentos": ["farmaceutico", "medico"],
   "/farmacias": ["admin"],
@@ -69,6 +72,8 @@ const ROTAS = {
   "/privacidade-lgpd": ["admin"],
   // ficha completa de um atendimento (/ficha/:id): só a farmácia dele
   "/ficha": ["farmaceutico"],
+  // um atendimento acompanhado pela administração (/atendimentos/:id)
+  "/acompanhamento": ["admin"],
   // a própria conta: todo perfil (fica por último para nunca ser a tela inicial)
   "/minha-conta": ["farmaceutico", "medico", "admin"],
 };

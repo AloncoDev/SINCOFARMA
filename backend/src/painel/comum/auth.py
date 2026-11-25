@@ -33,6 +33,8 @@ PERMISSOES: dict[str, frozenset[str]] = {
     "gerenciar_usuarios": frozenset({"admin"}),
     # cadastrar farmácias e ajustar nome e metas; a lista mostra só números agregados
     "gerenciar_farmacias": frozenset({"admin"}),
+    # quem cuidou de cada atendimento (farmacêutico, médico) e a situação, sem dados do paciente
+    "acompanhar_atendimentos": frozenset({"admin"}),
     # relatórios da rede (por dia, mês e farmácia), só com contadores agregados
     "ver_relatorios": frozenset({"admin"}),
     # registro de auditoria geral (sem dados de paciente)

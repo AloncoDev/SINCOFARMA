@@ -138,7 +138,7 @@
 }
 .rep-col.is-partial .rep-stack { opacity: 0.72; outline: 1.5px dashed #94a3b8; outline-offset: 1px; }
 .rep-col.is-selected .rep-track { background: linear-gradient(to top, rgba(26, 111, 181, 0.1), transparent 90%); border-radius: 8px 8px 0 0; }
-.rep-x { align-self: end; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+.rep-x { align-self: end; justify-self: center; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .rep-col.is-weekend .rep-x { color: #b6c0cd; }
 .rep-col.is-today .rep-x, .rep-col.is-selected .rep-x { color: var(--blue-700); font-weight: 700; }
 .rep-chart.is-dense .rep-x { font-size: 10.5px; }
@@ -219,9 +219,15 @@
 @media (max-width: 1280px) {
   .rep-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-@media (max-width: 1100px) {
+/* lado a lado até telas pequenas: empilhado, o ritmo esticava e virava um gráfico enorme */
+@media (max-width: 1280px) {
+  .rep-row { grid-template-columns: minmax(0, 1.5fr) minmax(250px, 1fr); }
+}
+@media (max-width: 900px) {
   .rep-row { grid-template-columns: minmax(0, 1fr); }
 }
+/* nunca mais alto que isso, mesmo com o cartão largo */
+.rep-pace-svg { max-height: 240px; }
 
 @media print {
   .sidebar, .topbar, .no-print, .dash-bg, .toasts, .offline-bar { display: none !important; }

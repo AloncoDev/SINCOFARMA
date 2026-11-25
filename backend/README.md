@@ -36,6 +36,8 @@ tests/                         pytest com DynamoDB e Cognito simulados
 | GET | `/farmacias` | farmácias com metas, equipe (farmacêuticos ativos e convites pendentes) e números de hoje e do mês, só agregados. Admin |
 | POST | `/farmacias` | cadastra farmácia (`id` vira o grupo `unidade:<id>`), nome e metas, com auditoria. Admin |
 | PATCH | `/farmacias/{id}` | muda nome e metas (o código não muda), com auditoria. Admin |
+| GET | `/gestao/atendimentos?unidade=<id>&dia=aaaa-mm-dd` | atendimentos de uma farmácia num dia com protocolo, situação, farmacêutico e médico/encaminhamento, sem dados do paciente; consulta registrada na auditoria. Admin |
+| GET | `/gestao/atendimentos/{id}` | situação, encaminhamentos e linha do tempo (quem fez o quê, com o papel), sem dados do paciente; consulta registrada na auditoria. Admin |
 | GET | `/relatorios?mes=aaaa-mm&farmacia=<id>` | atendimentos por dia do mês, últimos 12 meses e cada farmácia (mês e anterior), só contadores agregados; padrão mês atual e rede inteira. Admin |
 | GET | `/auditoria?mes=aaaa-mm` | administração: registro geral do mês, sem dados de paciente (paginado por `inicio`) |
 | GET | `/me/dados` | qualquer perfil: tudo o que o painel guarda sobre quem pede, para baixar (sem dados de paciente) |

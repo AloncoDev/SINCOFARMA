@@ -2,6 +2,7 @@
 
 import re
 
+from .comum import acompanhamento
 from .comum import auditoria
 from .comum import encaminhamentos as enc
 from .comum import farmacias
@@ -270,6 +271,36 @@ def atualizar_farmacia(event, _context):
     if not UNIT_ID.fullmatch(unit):
         raise HttpError(404, "Farmácia não encontrada.")
     return 200, farmacias.update(caller, unit, validar_mudanca_farmacia(parse_json(event)))
+
+
+# ---------------------------------------------------------------- acompanhamento (administração)
+
+@handler
+def acompanhar_atendimentos(event, _context):
+    """GET /gestao/atendimentos?unidade=<id>&dia=aaaa-mm-dd: atendimentos de uma farmácia num dia,
+    com farmacêutico, médico e situação (sem dados do paciente). Padrão: hoje."""
+    caller = caller_from_event(event)
+    caller.exigir("acompanhar_atendimentos")
+    params = event.get("queryStringParameters") or {}
+    unit = (params.get("unidade") or "").strip()
+    if not UNIT_ID.fullmatch(unit):
+        raise HttpError(400, "Informe a farmácia (?unidade=<id>).")
+    today = tempo.day_key(tempo.now())
+    day = (params.get("dia") or today).strip()
+    if not DAY.fullmatch(day) or not tempo.valid_day(day) or day > today:
+        raise HttpError(400, "Dia inválido.")
+    return 200, acompanhamento.list_day(caller, unit, day)
+
+
+@handler
+def acompanhar_atendimento(event, _context):
+    """GET /gestao/atendimentos/{id}: situação, pessoas envolvidas e linha do tempo de um atendimento."""
+    caller = caller_from_event(event)
+    caller.exigir("acompanhar_atendimentos")
+    visit_id = (event.get("pathParameters") or {}).get("id", "")
+    if not VISIT_ID.match(visit_id):
+        raise HttpError(404, "Atendimento não encontrado.")
+    return 200, acompanhamento.detail(caller, visit_id)
 
 
 # ---------------------------------------------------------------- relatórios (administração)

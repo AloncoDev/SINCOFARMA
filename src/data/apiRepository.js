@@ -24,6 +24,10 @@
 //                                  today: { total, urgent }, month: { total, done, referred, progress, urgent, triageMinutes } }] }
 //   POST  /farmacias          { id, name, monthGoal, triageGoalMin } -> farmácia
 //   PATCH /farmacias/:id      { name?, monthGoal?, triageGoalMin? } -> farmácia
+// Acompanhamento (administração; sem dados do paciente):
+//   GET   /gestao/atendimentos?unidade=&dia= -> { unit, unitName, day, visits: [{ id, protocol, at, time, status, urgent,
+//                                  risk, rt, rtCrf, referrals: [{ id, status, statusAt, createdAt, priority, doctor, from }] }] }
+//   GET   /gestao/atendimentos/:id -> { visit, unit, unitName, referrals, timeline: [{ at, action, label, actor, role, changes, doctor? }] }
 // Relatórios (administração; só contadores agregados):
 //   GET   /relatorios?mes=aaaa-mm[&farmacia=] -> { month, today, unit, units: [{ id, name, monthGoal, triageGoalMin }],
 //                                  days: [{ day, ...contadores }], months: [{ month, ...contadores }] (12, até `mes`),
@@ -58,6 +62,8 @@ export const apiRepository = {
   listPharmacies: () => api("/farmacias"),
   createPharmacy: (data) => api("/farmacias", { method: "POST", body: JSON.stringify(data) }),
   updatePharmacy: (id, change) => api(`/farmacias/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(change) }),
+  trackVisits: (unit, day) => api(`/gestao/atendimentos?${new URLSearchParams({ unidade: unit, dia: day })}`),
+  trackVisit: (id) => api(`/gestao/atendimentos/${encodeURIComponent(id)}`),
   report: (month, unit) => api(`/relatorios?${new URLSearchParams({ mes: month, ...(unit ? { farmacia: unit } : {}) })}`),
   listUsers: () => api("/usuarios"),
   createUser: (data) => api("/usuarios", { method: "POST", body: JSON.stringify(data) }),

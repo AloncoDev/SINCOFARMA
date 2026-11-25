@@ -68,3 +68,6 @@ input::-ms-clear { display: none; }
 :root[data-motion="reduce"] .beams,
 :root[data-motion="reduce"] .login-bg .glow,
 :root[data-motion="reduce"] .dash-glow { display: none !important; }
+
+/* botão com cara de link (login e painel) */
+.link-btn { border: 0; background: transparent; padding: 0; font: inherit; font-weight: 600; color: var(--blue-700); cursor: pointer; }

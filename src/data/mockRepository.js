@@ -4,6 +4,7 @@ import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archi
 import { isVisit, countBy } from "./stats";
 import { timeLabel, dayKey, fromDayKey } from "../utils/dates";
 import { seeded, buildReport, pharmacyDays, sumCounts } from "./mockReport";
+import { trackDay, trackVisit } from "./mockAcompanhamento";
 
 const KEY = "sinco:clinic";
 const SCHEMA = 2;
@@ -360,6 +361,17 @@ export const mockRepository = {
       })
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     return { month: dayKey(now).slice(0, 7), units };
+  },
+
+  /* ---------- acompanhamento dos atendimentos (administração; sem pacientes) ---------- */
+  async trackVisits(unitId, day) {
+    await wait(LATENCY);
+    return trackDay(pharmacies, unitId, day, { todayVisits: current().visits, referrals });
+  },
+
+  async trackVisit(id) {
+    await wait(LATENCY);
+    return trackVisit(pharmacies, id, { todayVisits: current().visits, referrals });
   },
 
   /* ---------- relatórios (administração; números gerados em mockReport) ---------- */
