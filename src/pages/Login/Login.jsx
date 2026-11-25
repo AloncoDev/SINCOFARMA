@@ -80,7 +80,8 @@ export default function Login() {
   const success = status === "success";
 
   // efeito 3D + holofote seguindo o mouse (mesmo hook dos cards do painel)
-  const tilt = useSpotlightTilt(8);
+  // inclinação leve: mais que isso deforma o card em telas menores ou com zoom do Windows
+  const tilt = useSpotlightTilt(3);
 
   /** Mostra a próxima etapa pedida pelo Cognito (podem vir várias em sequência). */
   async function enterChallenge(err) {
@@ -409,9 +410,6 @@ export default function Login() {
                   </label>
                   <motion.div
                     className={`input-wrap${identifier ? " has-value" : ""}${focused === "identifier" ? " is-focused" : ""}`}
-                    whileHover={{ scale: 1.01 }}
-                    animate={{ scale: focused === "identifier" ? 1.02 : 1 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >
                     {focused === "identifier" && (
                       <motion.span layoutId="input-highlight" className="input-highlight" transition={{ type: "spring", stiffness: 380, damping: 30 }} />
@@ -457,9 +455,6 @@ export default function Login() {
                   </div>
                   <motion.div
                     className={`input-wrap${password ? " has-value" : ""}${focused === "password" ? " is-focused" : ""}`}
-                    whileHover={{ scale: 1.01 }}
-                    animate={{ scale: focused === "password" ? 1.02 : 1 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   >
                     {focused === "password" && (
                       <motion.span layoutId="input-highlight" className="input-highlight" transition={{ type: "spring", stiffness: 380, damping: 30 }} />

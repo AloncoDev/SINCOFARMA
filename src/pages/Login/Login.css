@@ -94,12 +94,10 @@
   z-index: 1;
   width: 100%;
   max-width: 448px;
-  perspective: 1500px;
 }
-.login-tilt {
-  position: relative;
-  transform-style: preserve-3d;
-}
+/* a inclinação gira o card como uma peça só (plano). Sem preserve-3d: com ele, campos e botão
+   viravam camadas 3D próprias e, em algumas placas de vídeo, "saltavam" para fora do card */
+.login-tilt { position: relative; }
 
 /* halo pulsante atrás do card */
 .card-glow {
@@ -201,10 +199,10 @@
   transform-origin: center;
 }
 
-/* ---------- form ---------- */
-form { text-align: left; }
+/* ---------- form (só dentro do card: estas regras não podem vazar para o painel) ---------- */
+.login-card form { text-align: left; }
 
-label {
+.login-card label {
   display: block;
   text-transform: uppercase;
   font-size: 11px;
@@ -214,7 +212,7 @@ label {
   margin-bottom: 8px;
   transition: color 0.2s;
 }
-label.is-focused { color: var(--blue-500); }
+.login-card label.is-focused { color: var(--blue-500); }
 
 .label-row {
   display: flex;
@@ -222,7 +220,8 @@ label.is-focused { color: var(--blue-500); }
   align-items: baseline;
   margin-top: 18px;
 }
-.label-row a {
+.label-row a,
+.label-row .link-btn {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--blue-700);
@@ -431,7 +430,6 @@ label.is-focused { color: var(--blue-500); }
   .badges { grid-template-columns: 1fr; }
 }
 
-.link-btn { border: 0; background: transparent; padding: 0; font: inherit; font-weight: 600; color: var(--blue-700); cursor: pointer; }
 .login-help {
   overflow: hidden;
   margin-top: 8px;
@@ -576,7 +574,7 @@ label.is-focused { color: var(--blue-500); }
 .challenge-back:hover svg { transform: translateX(-3px); }
 
 /* confiar neste computador (aparelho lembrado do Cognito) */
-.trust-device {
+.login-card .trust-device {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -610,3 +608,27 @@ label.is-focused { color: var(--blue-500); }
 .login-policy { margin-top: 14px; text-align: center; font-size: 12.5px; }
 .login-policy a { color: #1e6fb5; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .login-policy a:hover { text-decoration: underline; }
+
+/* ---------- telas baixas (notebook 1366×768, Windows com zoom de 125–150%) ----------
+   compacta o card para o botão "Acessar Plataforma" aparecer sem rolar */
+@media (max-height: 820px) {
+  .login-header { padding-top: 10px; padding-bottom: 10px; }
+  .login-header img { height: 44px; }
+  .login-main { padding-top: 20px; padding-bottom: 20px; }
+  .login-card { padding: 22px 28px 20px; }
+  .login-icon { width: 44px; height: 44px; margin-bottom: 10px; border-radius: 12px; }
+  .login-card h1 { font-size: 22px; }
+  .login-subtitle { margin-top: 6px; font-size: 13.5px; line-height: 1.5; }
+  .login-card hr { margin: 16px 0; }
+  .label-row { margin-top: 14px; }
+  .input-wrap { height: 46px; }
+  .btn-primary { height: 48px; margin-top: 18px; }
+}
+@media (max-height: 640px) {
+  .login-header img { height: 38px; }
+  .login-main { padding-top: 12px; padding-bottom: 12px; }
+  .login-card { padding-top: 18px; }
+  .login-icon { display: none; }
+  .login-subtitle { display: none; }
+  .login-card hr { margin: 12px 0; }
+}

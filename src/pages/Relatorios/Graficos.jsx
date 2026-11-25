@@ -179,9 +179,10 @@ export function DailyChart({ data, index, onCsv }) {
 export function MonthlyChart({ data, goal, index, onPick, onCsv }) {
   const [hover, setHover] = useState(null);
   const current = data.today.slice(0, 7);
-  const items = data.months.map((m) => ({
+  const items = data.months.map((m, i) => ({
     key: m.month,
-    short: monthKeyLabel(m.month, { short: true }),
+    // só o mês ("dez"); o ano aparece no primeiro e em janeiro, para caber em cartões estreitos
+    short: i === 0 || m.month.endsWith("-01") ? monthKeyLabel(m.month, { short: true }) : monthKeyLabel(m.month, { short: true }).split("/")[0],
     title: `${monthKeyLabel(m.month)}${m.month === current ? " (até hoje)" : ""}`,
     counts: m,
     selected: m.month === data.month,
