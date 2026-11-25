@@ -1,0 +1,112 @@
+/* ---------- Atendimentos da rede (administração; sem dados do paciente) ---------- */
+.track-note { background: #eef6f1; border-color: #c9e8d6; color: #0f5c40; }
+
+/* farmácia + dia */
+.track-bar { flex-wrap: wrap; }
+.track-unit .sel-value { max-width: min(36vw, 380px); }
+.track-day { display: flex; align-items: center; gap: 10px; }
+
+/* 6 cartões de resumo */
+.track-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+/* tabela */
+.track-table { min-width: 760px; }
+.track-table td { vertical-align: middle; }
+.track-proto { display: grid; gap: 2px; }
+.track-proto strong { font-size: 13.5px; color: var(--blue-900); }
+.track-proto small { font-size: 12px; color: var(--muted); }
+.track-status, .track-situation { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.track-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #fde8e8;
+  color: #b91c1c;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.track-person { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: var(--blue-900); }
+.track-person svg { flex-shrink: 0; }
+.track-person--rt svg { color: #15803d; }
+.track-person--md svg { color: #1d4ed8; }
+.track-ref { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.track-ref small { font-size: 11.5px; color: var(--muted); }
+.track-none { font-size: 12.5px; color: #94a3b8; }
+.track-go { color: #94a3b8; transition: transform var(--dur-fast) var(--ease-out), color var(--dur-fast); }
+.visit-row:hover .track-go { color: var(--blue-700); transform: translateX(3px); }
+
+/* detalhe */
+.crumbs a { color: inherit; text-decoration: none; }
+.crumbs a:hover { color: var(--blue-700); text-decoration: underline; }
+.track-detail { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: start; }
+.track-side { display: grid; gap: 16px; }
+.track-card { display: grid; gap: 12px; align-content: start; padding: 18px 20px; }
+.track-card h2 { font-size: 15px; font-weight: 700; color: var(--blue-900); }
+.track-facts { display: grid; gap: 10px; margin: 0; }
+.track-facts dt { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.track-facts dd { display: flex; align-items: center; gap: 6px; margin: 3px 0 0; font-size: 13.5px; color: var(--text); }
+.track-facts dd svg { color: var(--blue-700); }
+.track-risk {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.track-risk--azul { background: #e0ecff; color: #1d4ed8; }
+.track-risk--verde { background: #dcfce7; color: #15803d; }
+.track-risk--amarelo { background: #fef9c3; color: #854d0e; }
+.track-risk--laranja { background: #ffedd5; color: #c2410c; }
+.track-risk--vermelho { background: #fee2e2; color: #b91c1c; }
+
+.track-people, .track-refs { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.track-people li { display: flex; align-items: center; gap: 10px; }
+.track-people strong { display: block; font-size: 13.5px; color: var(--blue-900); }
+.track-people small { font-size: 12px; color: var(--muted); }
+.track-avatar { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px; }
+.track-avatar--farmaceutico { background: #e6f8ec; color: #15803d; }
+.track-avatar--medico { background: #e3edfd; color: #1d4ed8; }
+.track-refs li { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+.track-ref-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.track-ref-head strong { font-size: 13.5px; color: var(--blue-900); }
+.track-refs small { font-size: 12px; line-height: 1.45; color: #475569; }
+
+/* linha do tempo */
+.track-timeline { position: relative; display: grid; gap: 18px; margin: 0; padding: 4px 0 4px; list-style: none; }
+.track-timeline::before { content: ""; position: absolute; left: 13px; top: 10px; bottom: 10px; width: 2px; background: var(--line); }
+.track-timeline li { position: relative; display: flex; gap: 12px; }
+.track-timeline li > div { display: grid; gap: 3px; padding-top: 3px; }
+.track-timeline strong { font-size: 13.5px; color: var(--blue-900); }
+.track-timeline small { font-size: 12px; color: var(--muted); }
+.track-change { font-size: 12.5px; font-weight: 600; color: #334155; }
+.track-dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.track-dot--farmaceutico { background: #e6f8ec; color: #15803d; }
+.track-dot--medico { background: #e3edfd; color: #1d4ed8; }
+.track-dot--none { background: #f1f5f9; }
+
+@media (max-width: 1280px) {
+  .track-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .track-detail { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* botão "Voltar" é um link: sem sublinhado; protocolo no título no mesmo tamanho */
+.page-actions a.btn { text-decoration: none; }
+h1 .mono { font-size: 0.82em; letter-spacing: 0; }

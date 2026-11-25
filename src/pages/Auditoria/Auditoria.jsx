@@ -24,6 +24,8 @@ const ACTIONS = {
   unit_update: { label: "Alterou farmácia", group: "usuarios" },
   // acesso à ficha completa (CPF, telefone, dados de saúde)
   visit_read: { label: "Abriu ficha", group: "atendimentos" },
+  visits_track: { label: "Consultou atendimentos da farmácia", group: "atendimentos" },
+  visit_track: { label: "Acompanhou atendimento", group: "atendimentos" },
   lgpd_export_self: { label: "Baixou os próprios dados", group: "privacidade" },
   lgpd_request: { label: "Pedido de privacidade", group: "privacidade" },
   lgpd_request_resolved: { label: "Respondeu pedido de privacidade", group: "privacidade" },

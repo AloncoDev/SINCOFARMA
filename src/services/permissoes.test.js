@@ -23,7 +23,7 @@ describe("papéis a partir dos grupos do Cognito", () => {
 
 describe("o que cada perfil vê", () => {
   const paginas = (u) =>
-    ["/dashboard", "/atendimentos", "/nova-triagem", "/encaminhamentos", "/farmacias", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/ficha", "/minha-conta"].filter((p) =>
+    ["/dashboard", "/atendimentos", "/nova-triagem", "/encaminhamentos", "/farmacias", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/ficha", "/acompanhamento", "/minha-conta"].filter((p) =>
       podeRota(u, p)
     );
 
@@ -38,15 +38,17 @@ describe("o que cada perfil vê", () => {
     expect(pode(medico, "ver_atendimentos")).toBe(false);
   });
 
-  it("administração: telas de gestão, sem listas de pacientes nem triagem", () => {
-    expect(paginas(admin)).toEqual(["/dashboard", "/farmacias", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/minha-conta"]);
+  it("administração: gestão e acompanhamento dos atendimentos, sem dados de pacientes nem triagem", () => {
+    expect(paginas(admin)).toEqual(["/dashboard", "/atendimentos", "/farmacias", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/acompanhamento", "/minha-conta"]);
     expect(rotaInicial(admin)).toBe("/dashboard");
+    // vê quem cuidou de cada atendimento, nunca a lista com pacientes
+    expect(pode(admin, "acompanhar_atendimentos")).toBe(true);
     expect(pode(admin, "ver_atendimentos")).toBe(false);
     expect(pode(admin, "criar_triagem")).toBe(false);
   });
 
   it("papéis somam", () => {
-    expect(paginas(rtAdmin)).toHaveLength(11);
+    expect(paginas(rtAdmin)).toHaveLength(12);
     expect(pode(rtAdmin, "criar_triagem")).toBe(true);
   });
 

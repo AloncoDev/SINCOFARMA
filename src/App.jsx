@@ -4,13 +4,15 @@ import AppLayout from "./layouts/AppLayout";
 import { ClinicProvider } from "./contexts/ClinicProvider";
 import { useAuth } from "./contexts/auth";
 import RouteFallback from "./components/RouteFallback";
-import { podeRota, rotaInicial } from "./services/permissoes";
+import { pode, podeRota, rotaInicial } from "./services/permissoes";
 import { appPages, loaders } from "./pages/loaders";
 
 const Login = lazy(loaders.Login);
 const Dashboard = lazy(loaders.Dashboard);
 const NovaTriagem = lazy(loaders.NovaTriagem);
 const Atendimentos = lazy(loaders.Atendimentos);
+const Acompanhamento = lazy(loaders.Acompanhamento);
+const AcompanhamentoDetalhe = lazy(loaders.AcompanhamentoDetalhe);
 const Encaminhamentos = lazy(loaders.Encaminhamentos);
 const Encaminhamento = lazy(loaders.Encaminhamento);
 const Farmacias = lazy(loaders.Farmacias);
@@ -60,10 +62,18 @@ function PublicOnly({ children }) {
   return user ? <Navigate to={rotaInicial(user)} replace /> : children;
 }
 
+/** Farmacêutico vê os atendimentos da farmácia; a administração, o acompanhamento da rede (sem pacientes). */
+function AtendimentosDoPerfil() {
+  const { user } = useAuth();
+  return pode(user, "ver_atendimentos") ? <Atendimentos /> : <Acompanhamento />;
+}
+
 // rota -> página (a permissão de cada uma está em services/permissoes.js)
 const PAGINAS = [
   ["/dashboard", <Dashboard />],
-  ["/atendimentos", <Atendimentos />],
+  ["/atendimentos", <AtendimentosDoPerfil />],
+  // um atendimento acompanhado pela administração
+  ["/atendimentos/:id", <AcompanhamentoDetalhe />, "/acompanhamento"],
   ["/nova-triagem", <NovaTriagem />],
   ["/encaminhamentos", <Encaminhamentos />],
   // caso aberto: mesma permissão da lista

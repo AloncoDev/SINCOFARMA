@@ -694,6 +694,66 @@ Resources:
             Method: GET
             Path: "/visits/{id}"
 
+  AcompanharAtendimentosFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sincofarma-painel-${Stage}-acompanhar-atendimentos"
+      Handler: painel.api.acompanhar_atendimentos
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:GetItem, dynamodb:Scan, dynamodb:PutItem] # resumos do dia, farmácias e registro geral
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:BatchGetItem] # só campos de controle (ProjectionExpression)
+              Resource: !GetAtt TabelaClinico.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+            - Effect: Allow
+              Action: [cognito-idp:ListUsers, cognito-idp:AdminGetUser]
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Http:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Method: GET
+            Path: "/gestao/atendimentos"
+
+  AcompanharAtendimentoFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sincofarma-painel-${Stage}-acompanhar-atendimento"
+      Handler: painel.api.acompanhar_atendimento
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:GetItem, dynamodb:Scan, dynamodb:PutItem] # resumo, farmácias e registro geral
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:BatchGetItem] # só campos de controle (ProjectionExpression)
+              Resource: !GetAtt TabelaClinico.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+            - Effect: Allow
+              Action: [cognito-idp:ListUsers, cognito-idp:AdminGetUser]
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Http:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Method: GET
+            Path: "/gestao/atendimentos/{id}"
+
   RelatoriosFn:
     Type: AWS::Serverless::Function
     Properties:
@@ -749,6 +809,16 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${VerVisitaFn}"
+      RetentionInDays: !Ref LogRetentionDays
+  AcompanharAtendimentosLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AcompanharAtendimentosFn}"
+      RetentionInDays: !Ref LogRetentionDays
+  AcompanharAtendimentoLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AcompanharAtendimentoFn}"
       RetentionInDays: !Ref LogRetentionDays
   RelatoriosLogs:
     Type: AWS::Logs::LogGroup
