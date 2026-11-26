@@ -293,20 +293,20 @@ SUB = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
 
 
 def validar_encaminhamento(body: dict) -> dict:
-    """POST /encaminhamentos: atendimento, médico, motivo e prioridade."""
+    """POST /encaminhamentos: atendimento, unidade de saúde de destino, motivo e prioridade."""
     erros = Erros()
     visit_id = body.get("visitId")
     if not isinstance(visit_id, str) or not VISIT_ID.match(visit_id):
         erros.add("visitId", "Atendimento inválido.")
-    doctor = body.get("doctorId")
-    if not isinstance(doctor, str) or not SUB.match(doctor):
-        erros.add("doctorId", "Médico inválido.")
+    health = body.get("healthUnitId")
+    if not isinstance(health, str) or not UNIT_ID.match(health):
+        erros.add("healthUnitId", "Escolha a unidade de saúde.")
     reason = _text(body, "reason", erros, "reason", required=True, min_len=5, max_len=1000)
     priority = body.get("priority", "rotina")
     if priority not in PRIORITIES:
         erros.add("priority", "Prioridade inválida (rotina ou urgente).")
     erros.raise_if_any()
-    return {"visitId": visit_id, "doctorId": doctor, "reason": reason, "priority": priority}
+    return {"visitId": visit_id, "healthUnitId": health, "reason": reason, "priority": priority}
 
 
 def validar_mudanca_encaminhamento(ref_id: str, body: dict) -> dict:
@@ -339,11 +339,11 @@ def _roles(value, erros: Erros) -> list[str] | None:
     return sorted(set(value))
 
 
-def _unit(value, erros: Erros) -> str | None:
+def _unit(value, erros: Erros, campo: str = "unit") -> str | None:
     if value in (None, ""):
         return None
     if not isinstance(value, str) or not UNIT_ID.match(value):
-        erros.add("unit", "Farmácia inválida.")
+        erros.add(campo, "Farmácia inválida." if campo == "unit" else "Unidade de saúde inválida.")
         return None
     return value
 
@@ -360,19 +360,22 @@ def validar_usuario(body: dict) -> dict:
         erros.add("email", "E-mail inválido.")
     roles = _roles(body.get("roles"), erros)
     unit = _unit(body.get("unit"), erros)
+    health = _unit(body.get("healthUnit"), erros, campo="healthUnit")
     crf = only_digits(body.get("crf"))
+    if roles and "medico" in roles and not health:
+        erros.add("healthUnit", "Médico precisa de uma unidade de saúde.")
     if roles and "farmaceutico" in roles:
         if not unit:
             erros.add("unit", "Farmacêutico precisa de uma farmácia.")
         if not crf or len(crf) > 10:
             erros.add("crf", "CRF obrigatório para farmacêutico (só números).")
     erros.raise_if_any()
-    return {"cpf": cpf, "name": name, "email": email.lower(), "roles": roles, "unit": unit, "crf": crf or None}
+    return {"cpf": cpf, "name": name, "email": email.lower(), "roles": roles, "unit": unit, "healthUnit": health, "crf": crf or None}
 
 
 def validar_mudanca_usuario(body: dict) -> dict:
     """PATCH /usuarios/{id}: perfis, farmácia, ativo, reset do MFA ou reenvio do convite."""
-    allowed = {"roles", "unit", "enabled", "resetMfa", "resendInvite"}
+    allowed = {"roles", "unit", "healthUnit", "enabled", "resetMfa", "resendInvite"}
     extra = set(body) - allowed
     if extra:
         raise HttpError(422, "Campos não permitidos.", {"fields": {k: "Não editável." for k in sorted(extra)}})
@@ -384,6 +387,8 @@ def validar_mudanca_usuario(body: dict) -> dict:
         out["roles"] = _roles(body["roles"], erros)
     if "unit" in body:
         out["unit"] = _unit(body["unit"], erros)
+    if "healthUnit" in body:
+        out["healthUnit"] = _unit(body["healthUnit"], erros, campo="healthUnit")
     for flag in ("enabled", "resetMfa", "resendInvite"):
         if flag in body:
             if not isinstance(body[flag], bool):
@@ -491,3 +496,61 @@ def validar_mudanca_farmacia(body: dict) -> dict:
     if not out:
         raise HttpError(422, "Nada para alterar.")
     return out
+
+
+HEALTH_KINDS = ("ubs", "upa", "hospital", "policlinica", "caps", "outro")
+
+
+def _health_fields(body: dict, erros: Erros, *, required: bool) -> dict:
+    out = {}
+    if required or "name" in body:
+        out["name"] = _text(body, "name", erros, "name", required=True, min_len=3, max_len=120)
+    if required or "kind" in body:
+        kind = body.get("kind")
+        if kind not in HEALTH_KINDS:
+            erros.add("kind", "Escolha o tipo (UBS, UPA, hospital...).")
+        out["kind"] = kind
+    if required or "region" in body:
+        out["region"] = _text(body, "region", erros, "region", required=False, max_len=80) or ""
+    return out
+
+
+def validar_unidade_saude(body: dict) -> dict:
+    """POST /unidades-saude: código (vira o grupo saude:<código>), nome, tipo e região."""
+    erros = Erros()
+    unit = body.get("id")
+    if not isinstance(unit, str) or not UNIT_ID.match(unit):
+        erros.add("id", "Use letras minúsculas, números e hífen (ex.: ubs-1-asa-sul).")
+    out = _health_fields(body, erros, required=True)
+    erros.raise_if_any()
+    return {"id": unit, **out}
+
+
+def validar_mudanca_unidade_saude(body: dict) -> dict:
+    """PATCH /unidades-saude/{id}: nome, tipo e região (o código não muda: é o vínculo dos médicos)."""
+    extra = set(body) - {"name", "kind", "region"}
+    if extra:
+        raise HttpError(422, "Campos não permitidos.", {"fields": {k: "Não editável." for k in sorted(extra)}})
+    if not body:
+        raise HttpError(422, "Nada para atualizar.")
+    erros = Erros()
+    out = _health_fields(body, erros, required=False)
+    erros.raise_if_any()
+    return out
+
+
+def validar_busca_guia(body: dict) -> tuple[str, str]:
+    """POST /guias/busca: { code } ou { cpf } (o CPF vai no corpo, nunca na URL)."""
+    from .encaminhamentos import normalize_code  # evita import circular
+
+    if "code" in body and body["code"]:
+        code = normalize_code(str(body["code"]))
+        if not code:
+            raise HttpError(422, "Código da guia inválido.", {"fields": {"code": "Use o código impresso na guia (ex.: ENC-7K3Q-9M2X)."}})
+        return "code", code
+    if "cpf" in body and body["cpf"]:
+        cpf = only_digits(str(body["cpf"]))
+        if not is_valid_cpf(cpf):
+            raise HttpError(422, "CPF inválido.", {"fields": {"cpf": "Confira os 11 dígitos."}})
+        return "cpf", cpf
+    raise HttpError(422, "Informe o código da guia ou o CPF do paciente.")

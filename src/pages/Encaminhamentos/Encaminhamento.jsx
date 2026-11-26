@@ -18,6 +18,7 @@ import {
   Ban,
   FileText,
   Stethoscope,
+  QrCode,
 } from "lucide-react";
 import SpotlightCard from "../../components/SpotlightCard";
 import { repository } from "../../data";
@@ -69,17 +70,27 @@ function Detalhe({ data: r, onChange }) {
   const vitals = vitalsOf(c.vitals);
   const years = age(p.birthDate);
   const isOpen = REFERRAL_OPEN.includes(r.status);
-  // o servidor também confere: médico que recebeu responde; a farmácia que enviou cancela
-  const canAnswer = isOpen && pode(user, "responder_encaminhamento") && r.mine !== false && !pode(user, "criar_encaminhamento");
+  // o servidor também confere: médico ligado a uma unidade de saúde responde (mesmo que o paciente
+  // tenha ido a outra unidade com a guia); a farmácia que enviou cancela
+  const canAnswer =
+    isOpen && pode(user, "responder_encaminhamento") && !pode(user, "criar_encaminhamento") && (!!user?.healthUnit || r.mine !== false);
+  const destination = r.healthUnit?.name ?? r.doctor?.name;
   const canCancel = isOpen && pode(user, "criar_encaminhamento");
 
   return (
     <main className="dash-content ficha">
       <div className="ficha-top no-print">
         <Link to="/encaminhamentos" className="link-arrow ficha-back"><ArrowLeft size={14} /> Encaminhamentos</Link>
-        <button type="button" className="btn btn--ghost" onClick={() => window.print()}>
-          <Printer size={16} /> Imprimir / PDF
-        </button>
+        <div className="ref-top-actions">
+          {r.code && (
+            <Link to={`/encaminhamentos/${r.id}/guia`} className="btn btn--primary">
+              <QrCode size={16} /> Guia de encaminhamento
+            </Link>
+          )}
+          <button type="button" className="btn btn--ghost" onClick={() => window.print()}>
+            <Printer size={16} /> Imprimir ficha
+          </button>
+        </div>
       </div>
 
       <section className="page-head">
@@ -91,8 +102,9 @@ function Detalhe({ data: r, onChange }) {
           </motion.nav>
           <motion.h1 {...rise(1)}>{p.name}</motion.h1>
           <motion.p className="hello" {...rise(2)}>
+            {r.code && <>Guia <b className="mono">{r.code}</b> · </>}
             {r.protocol && <>Protocolo <b className="mono">{r.protocol}</b> · </>}
-            {r.unitName} · para {r.doctor?.name}
+            {r.unitName} · para {destination}
           </motion.p>
         </div>
         <motion.div className="ficha-tags" {...rise(2)}>
@@ -122,7 +134,7 @@ function Detalhe({ data: r, onChange }) {
         <Resposta r={r} canAnswer={canAnswer} canCancel={canCancel} onChange={onChange} />
       </div>
 
-      <h2 className="ref-section">Ficha enviada ao médico</h2>
+      <h2 className="ref-section">Ficha enviada à unidade de saúde</h2>
       <div className="ficha-grid">
         <SpotlightCard index={4} className="ficha-card">
           <h2><UserRound size={17} /> Paciente</h2>
@@ -195,7 +207,9 @@ function Timeline({ r }) {
   const steps = [
     { icon: Send, label: "Enviado", at: r.createdAt, tone: "done" },
     // cancelado antes da leitura: a etapa "lido" não aconteceu
-    ...(read === null ? [] : [{ icon: Eye, label: "Lido pelo médico", at: read ? (closed ? null : r.statusAt) : null, tone: read ? "done" : "todo" }]),
+    ...(read === null
+      ? []
+      : [{ icon: Eye, label: r.readBy ? `Lido por ${r.readBy.name}` : "Lido pelo médico", at: read ? r.readBy ? null : closed ? null : r.statusAt : null, tone: read ? "done" : "todo" }]),
     { icon: last.icon, label: last.label, at: closed ? r.answeredAt ?? r.statusAt : null, tone: closed ? last.tone : "todo" },
   ];
   return (
@@ -251,7 +265,10 @@ function Resposta({ r, canAnswer, canCancel, onChange }) {
       <SpotlightCard index={3} className={`ficha-card ref-answer${declined ? " is-declined" : ""}`}>
         <h2>{declined ? <CircleX size={17} /> : <CircleCheck size={17} />} {declined ? "Recusado pelo médico" : "Resposta do médico"}</h2>
         <p className="ficha-text">{r.response}</p>
-        <p className="ref-from">{r.doctor?.name} · {r.answeredAt ? dateTime(r.answeredAt) : ""}</p>
+        <p className="ref-from">
+          {r.doctor?.name}
+          {r.answeredUnit && <> · {r.answeredUnit}</>} · {r.answeredAt ? dateTime(r.answeredAt) : ""}
+        </p>
       </SpotlightCard>
     );
   }

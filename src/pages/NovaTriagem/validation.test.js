@@ -43,6 +43,12 @@ describe("validateTriage", () => {
     expect(validateTriage({ ...valid, inicioSintomas: "20/10/2026" }, now).inicioSintomas).toBe(true);
   });
 
+  it("cartão do SUS: opcional; se preenchido, 15 dígitos", () => {
+    expect(validateTriage({ ...valid, cns: "" }, now).cns).toBe(true);
+    expect(validateTriage({ ...valid, cns: "123456789012345" }, now).cns).toBe(true);
+    expect(validateTriage({ ...valid, cns: "1234567" }, now).cns).toBe(false);
+  });
+
   it("explica o erro de pressão arterial", () => {
     expect(paError({ paSis: "300", paDia: "80" })).toMatch(/Sistólica/);
     expect(paError({ paSis: "120", paDia: "10" })).toMatch(/Diastólica entre/);

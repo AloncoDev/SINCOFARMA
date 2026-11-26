@@ -9,6 +9,7 @@ from .comum import farmacias
 from .comum import lgpd
 from .comum import relatorios
 from .comum import repositorio as repo
+from .comum import saude
 from .comum import usuarios
 from .comum import tempo
 from .comum.auth import caller_from_event
@@ -18,15 +19,18 @@ from .comum.validacao import (
     SUB,
     VISIT_ID,
     validar_atualizacao,
+    validar_busca_guia,
     validar_cpf_titular,
     validar_criacao,
     validar_encaminhamento,
     validar_farmacia,
     validar_mudanca_encaminhamento,
     validar_mudanca_farmacia,
+    validar_mudanca_unidade_saude,
     validar_mudanca_usuario,
     validar_pedido_lgpd,
     validar_resposta_lgpd,
+    validar_unidade_saude,
     validar_usuario,
 )
 
@@ -172,15 +176,8 @@ def sincronizar_rnds(event, _context):
 # ---------------------------------------------------------------- encaminhamentos
 
 @handler
-def listar_medicos(event, _context):
-    """GET /medicos: para o farmacêutico escolher o destinatário (id e nome, sem CPF)."""
-    caller_from_event(event).exigir("criar_encaminhamento")
-    return 200, {"doctors": [{"id": d["id"], "name": d["name"]} for d in enc.doctors()]}
-
-
-@handler
 def criar_encaminhamento(event, _context):
-    """POST /encaminhamentos: envia um atendimento da farmácia a um médico."""
+    """POST /encaminhamentos: envia um atendimento da farmácia a uma unidade de saúde (gera a guia)."""
     caller = caller_from_event(event)
     caller.exigir("criar_encaminhamento")
     return 201, enc.create(caller, validar_encaminhamento(parse_json(event)))
@@ -243,6 +240,46 @@ def atualizar_usuario(event, _context):
     if not SUB.match(user_id):
         raise HttpError(404, "Usuário não encontrado.")
     return 200, usuarios.update(caller, user_id, validar_mudanca_usuario(parse_json(event)))
+
+
+@handler
+def localizar_guia(event, _context):
+    """POST /guias/busca { code } ou { cpf }: guias de encaminhamento (médico: de qualquer unidade;
+    farmácia: as dela). O CPF vai no corpo, nunca na URL; a busca fica no registro geral."""
+    caller = caller_from_event(event)
+    caller.exigir("localizar_guia")
+    by, value = validar_busca_guia(parse_json(event))
+    return 200, {"referrals": enc.search(caller, by, value)}
+
+
+# ---------------------------------------------------------------- unidades de saúde
+
+@handler
+def listar_unidades_saude(event, _context):
+    """GET /unidades-saude: farmacêutico escolhe o destino do encaminhamento; a administração
+    vê também quantos médicos cada unidade tem."""
+    caller = caller_from_event(event)
+    caller.exigir("ver_unidades_saude")
+    return 200, {"units": saude.list_all(with_doctors=caller.pode("gerenciar_unidades_saude"))}
+
+
+@handler
+def criar_unidade_saude(event, _context):
+    """POST /unidades-saude: cadastra a unidade e o grupo saude:<código> do Cognito."""
+    caller = caller_from_event(event)
+    caller.exigir("gerenciar_unidades_saude")
+    return 201, saude.create(caller, validar_unidade_saude(parse_json(event)))
+
+
+@handler
+def atualizar_unidade_saude(event, _context):
+    """PATCH /unidades-saude/{id}: nome, tipo e região."""
+    caller = caller_from_event(event)
+    caller.exigir("gerenciar_unidades_saude")
+    unit = (event.get("pathParameters") or {}).get("id", "")
+    if not UNIT_ID.fullmatch(unit):
+        raise HttpError(404, "Unidade de saúde não encontrada.")
+    return 200, saude.update(caller, unit, validar_mudanca_unidade_saude(parse_json(event)))
 
 
 # ---------------------------------------------------------------- farmácias (administração)

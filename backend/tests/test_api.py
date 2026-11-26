@@ -100,7 +100,10 @@ def test_validacao_recusa_dados_invalidos(aws):
     fields = body_of(resp)["details"]["fields"]
     for campo in ["cpf", "spo2", "paDia", "risco", "redFlags", "nascimento"]:
         assert campo in fields, campo
-    assert painel_items() == [{"PK": "UNIT#asa-sul", "SK": "PROFILE", "name": "Drogaria Planalto — Asa Sul", "monthGoal": 525, "triageGoalMin": 10}]
+    # nada gravado: só os cadastros do ambiente de teste (farmácia e unidades de saúde)
+    assert [i for i in painel_items() if not i["PK"].startswith("SAUDE#")] == [
+        {"PK": "UNIT#asa-sul", "SK": "PROFILE", "name": "Drogaria Planalto — Asa Sul", "monthGoal": 525, "triageGoalMin": 10}
+    ]
 
 
 def test_json_invalido(aws):

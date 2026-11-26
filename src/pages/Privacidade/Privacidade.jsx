@@ -98,7 +98,7 @@ export default function Privacidade() {
                 <b>Dados de saúde (sensíveis):</b> queixa, histórico (alergias, doenças, medicamentos), sinais
                 vitais, classificação de risco, sinais de alerta, observações e o desfecho do atendimento.
               </li>
-              <li>Encaminhamentos a médicos, com o motivo e a resposta do médico.</li>
+              <li>Encaminhamentos a unidades de saúde (UBS, UPA, hospitais), com o motivo, a guia de encaminhamento e a resposta do médico.</li>
             </ul>
           </div>
         </div>
@@ -149,7 +149,7 @@ export default function Privacidade() {
         <ul className="policy-checks">
           <li>Login com senha forte e verificação em duas etapas obrigatória.</li>
           <li>Dados criptografados, com chave própria; sessões que encerram sozinhas por inatividade.</li>
-          <li>Cada perfil vê só o necessário: a administração vê números, não listas de pacientes; o médico vê só o que foi encaminhado a ele.</li>
+          <li>Cada perfil vê só o necessário: a administração vê números, não listas de pacientes; os médicos veem os encaminhamentos da unidade de saúde onde atendem e as guias que o paciente apresenta (pelo código, CPF ou QR code), e cada consulta fica registrada.</li>
           <li>Toda abertura de ficha e toda alteração ficam registradas com quem fez e quando.</li>
         </ul>
       </Section>
@@ -172,7 +172,7 @@ export default function Privacidade() {
             <h3>Se você foi atendido numa farmácia</h3>
             <p>
               Peça na farmácia ou à administração do Sincofarma, com documento. Entregamos uma cópia de todos os seus
-              atendimentos e encaminhamentos, incluindo com quais médicos foram compartilhados. Dados de saúde não podem
+              atendimentos e encaminhamentos, incluindo com quais unidades de saúde foram compartilhados e qual médico respondeu. Dados de saúde não podem
               ser apagados antes do prazo legal; correções são feitas pela farmácia que registrou o atendimento.
             </p>
           </div>

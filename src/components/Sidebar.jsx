@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   LayoutGrid,
+  Hospital,
   ClipboardList,
   Stethoscope,
   CircleArrowOutUpRight,
@@ -66,6 +67,7 @@ export default function Sidebar({ open, onClose, user, onSignOut }) {
       title: "GESTÃO",
       items: [
         { label: "Farmácias", icon: Store, to: "/farmacias" },
+        { label: "Unidades de saúde", icon: Hospital, to: "/unidades-saude" },
         { label: "Relatórios", icon: ChartColumn, to: "/relatorios" },
         { label: "Usuários", icon: UsersRound, to: "/usuarios" },
         { label: "Auditoria", icon: ScrollText, to: "/auditoria" },

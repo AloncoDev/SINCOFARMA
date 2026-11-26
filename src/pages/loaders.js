@@ -10,6 +10,9 @@ export const loaders = {
   AcompanhamentoDetalhe: () => import("./Acompanhamento/AcompanhamentoDetalhe"),
   Encaminhamentos: () => import("./Encaminhamentos/Encaminhamentos"),
   Encaminhamento: () => import("./Encaminhamentos/Encaminhamento"),
+  Guia: () => import("./Encaminhamentos/Guia"),
+  GuiaCodigo: () => import("./Encaminhamentos/GuiaCodigo"),
+  UnidadesSaude: () => import("./UnidadesSaude/UnidadesSaude"),
   Farmacias: () => import("./Farmacias/Farmacias"),
   Relatorios: () => import("./Relatorios/Relatorios"),
   SemAcesso: () => import("./SemAcesso/SemAcesso"),
@@ -23,4 +26,4 @@ export const loaders = {
 };
 
 /** Páginas internas (tudo menos o login). */
-export const appPages = [loaders.Dashboard, loaders.NovaTriagem, loaders.Atendimentos, loaders.Acompanhamento, loaders.AcompanhamentoDetalhe, loaders.Encaminhamentos, loaders.Encaminhamento, loaders.Farmacias, loaders.Relatorios, loaders.SemAcesso, loaders.Usuarios, loaders.MinhaConta, loaders.Ficha, loaders.Auditoria, loaders.PedidosLgpd];
+export const appPages = [loaders.Dashboard, loaders.NovaTriagem, loaders.Atendimentos, loaders.Acompanhamento, loaders.AcompanhamentoDetalhe, loaders.Encaminhamentos, loaders.Encaminhamento, loaders.Guia, loaders.GuiaCodigo, loaders.UnidadesSaude, loaders.Farmacias, loaders.Relatorios, loaders.SemAcesso, loaders.Usuarios, loaders.MinhaConta, loaders.Ficha, loaders.Auditoria, loaders.PedidosLgpd];

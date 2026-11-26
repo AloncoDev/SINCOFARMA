@@ -1,0 +1,126 @@
+/* ---------- Guia de encaminhamento (tela e impressão A4) ---------- */
+.guia-page { display: grid; gap: 14px; justify-items: center; }
+.guia-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: min(100%, 820px); }
+.guia-closed { width: min(100%, 820px); }
+
+.guia-sheet {
+  width: min(100%, 820px);
+  display: grid;
+  gap: 18px;
+  padding: 32px 36px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  border-top: 6px solid var(--blue-700);
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 18px 40px -24px rgba(10, 37, 64, 0.35);
+}
+
+.guia-head { display: flex; align-items: center; gap: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.guia-logo { height: 46px; width: auto; }
+.guia-title { flex: 1; min-width: 0; }
+.guia-title h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; color: var(--blue-900); text-transform: uppercase; }
+.guia-title p { margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+.guia-code { display: grid; justify-items: end; gap: 2px; }
+.guia-code span { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.guia-code strong { font-size: 22px; font-weight: 800; letter-spacing: 0.04em; color: var(--blue-900); }
+
+.guia-grid { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 22px; align-items: start; }
+.guia-qr { display: grid; gap: 6px; justify-items: center; text-align: center; }
+.guia-qr img { width: 180px; height: 180px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 8px; }
+.guia-qr small { font-size: 10.5px; line-height: 1.35; color: var(--muted); }
+
+.guia-dl { display: grid; gap: 10px; margin: 0; }
+.guia-dl dt { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.guia-dl dd { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0 0; font-size: 14px; color: #0f172a; }
+.guia-dest dd { font-size: 16px; font-weight: 700; color: var(--blue-900); }
+.guia-dl--row { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.guia-urgent { color: #b91c1c; font-weight: 700; }
+.guia-risk { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.guia-risk--azul { background: #e0ecff; color: #1d4ed8; }
+.guia-risk--verde { background: #dcfce7; color: #15803d; }
+.guia-risk--amarelo { background: #fef9c3; color: #854d0e; }
+.guia-risk--laranja { background: #ffedd5; color: #c2410c; }
+.guia-risk--vermelho { background: #fee2e2; color: #b91c1c; }
+
+.guia-block { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.guia-block h2 { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue-700); }
+.guia-text { font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+.guia-sub { font-size: 13px; line-height: 1.5; color: #334155; }
+
+.guia-foot { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 22px; align-items: end; padding-top: 16px; border-top: 1px dashed #cbd5e1; }
+.guia-sign { display: grid; gap: 3px; text-align: center; }
+.guia-sign span { height: 40px; border-bottom: 1px solid #334155; }
+.guia-sign small { font-size: 11px; color: #475569; }
+.guia-foot p { font-size: 11.5px; line-height: 1.5; color: #475569; }
+
+/* ---------- busca da guia (modal) ---------- */
+.guia-modal { width: min(560px, 94vw); }
+.guia-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.guia-tabs .seg-label { display: inline-flex; align-items: center; gap: 6px; }
+.guia-code-input { font-size: 18px !important; letter-spacing: 0.08em; text-transform: uppercase; }
+.guia-error { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #b91c1c; }
+.guia-empty { display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: 10px; background: var(--soft); color: var(--muted); font-size: 13px; }
+.guia-results ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.guia-results button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.guia-results button:hover, .guia-results button:focus-visible { border-color: var(--blue-500); background: #f8fbff; outline: 0; }
+.guia-results button > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.guia-results strong { font-size: 13.5px; color: var(--blue-900); }
+.guia-results small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- leitor de QR ---------- */
+.qr-scanner { display: grid; gap: 10px; justify-items: center; }
+.qr-view {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 340px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0b1b2e;
+}
+.qr-view video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s; }
+.qr-view.is-live video { opacity: 1; }
+.qr-msg { position: relative; display: flex; align-items: center; gap: 8px; max-width: 86%; font-size: 13px; line-height: 1.45; color: #dbeafe; text-align: left; }
+.qr-msg--warn { color: #fde68a; }
+.qr-frame { position: absolute; inset: 18% 26%; pointer-events: none; }
+.qr-frame i { position: absolute; width: 26px; height: 26px; border: 3px solid #5cc8ff; }
+.qr-frame i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 6px 0 0 0; }
+.qr-frame i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 6px 0 0; }
+.qr-frame i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 6px; }
+.qr-frame i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 6px 0; }
+.qr-line { position: absolute; left: 6%; right: 6%; height: 2px; background: linear-gradient(90deg, transparent, #5cc8ff, transparent); animation: qr-scan 1.8s ease-in-out infinite alternate; }
+@keyframes qr-scan { from { top: 8%; } to { top: 92%; } }
+.qr-help { min-height: 18px; font-size: 12.5px; color: var(--muted); text-align: center; }
+.qr-file { cursor: pointer; }
+.qr-file-msg { font-size: 12.5px; color: #475569; text-align: center; }
+
+@media (max-width: 640px) {
+  .guia-grid, .guia-foot { grid-template-columns: minmax(0, 1fr); }
+  .guia-head { flex-wrap: wrap; }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  .sidebar, .topbar, .no-print, .dash-bg, .toasts, .offline-bar { display: none !important; }
+  body, .dash, .dash-content { background: #fff !important; }
+  .dash-content { padding: 0 !important; max-width: none !important; }
+  .guia-sheet { width: 100%; padding: 0; border: 0; border-top: 6px solid #004a80; border-radius: 0; box-shadow: none; gap: 14px; }
+  .guia-block, .guia-grid { break-inside: avoid; }
+  * { animation: none !important; transition: none !important; }
+}

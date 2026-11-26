@@ -6,7 +6,8 @@
 import { seeded } from "./mockReport";
 import { dayKey, fromDayKey } from "../utils/dates";
 
-const DOCTORS = ["Dr. Paulo Lima", "Dra. Carla Nunes"];
+const DOCTORS = ["Dr. Paulo Lima", "Dra. Carla Nunes", "Dr. Otávio Ramos", "Dra. Sônia Prates"];
+const HEALTH = ["UBS 1 Asa Sul", "UBS 5 Taguatinga", "UPA Ceilândia", "Policlínica de Taguatinga"];
 // farmacêuticos fictícios por farmácia (a demo usa os mesmos nomes da tela de Atendimentos)
 const RT_POOL = ["Dra. Beatriz Campos", "Dr. Marcos Vieira", "Dra. Helena Duarte", "Dr. Thiago Moreira", "Dra. Juliana Freitas", "Dr. André Pacheco", "Dra. Camila Rocha", "Dr. Felipe Andrade"];
 const WEEKDAY = [0.3, 1.12, 1.05, 1, 1.02, 0.98, 0.7];
@@ -53,7 +54,7 @@ function generated(pharmacy, day, now) {
       rt: pick(rts, rand),
       referrals: [],
     };
-    // parte dos encaminhados à SES-DF também vai a um médico pelo painel
+    // parte dos encaminhados à SES-DF vai também a uma unidade de saúde pelo painel (com guia)
     if (status === "referred" && rand() < 0.6) {
       const sentAt = addMin(iso, 6 + Math.round(rand() * 20));
       const age = (now - new Date(sentAt)) / 60e3; // minutos desde o envio
@@ -65,9 +66,14 @@ function generated(pharmacy, day, now) {
         createdAt: sentAt,
         statusAt: final === "sent" ? sentAt : addMin(sentAt, final === "read" ? 45 : 120),
         priority: urgent ? "urgente" : "rotina",
-        doctor: pick(DOCTORS, rand),
+        healthUnit: pick(HEALTH, rand),
+        // médico da unidade que leu/respondeu
+        reader: pick(DOCTORS, rand),
         from: visit.rt,
       });
+      const ref = visit.referrals.at(-1);
+      ref.doctor = ["answered", "declined"].includes(final) ? ref.reader : null;
+      ref.answeredUnit = ref.doctor ? ref.healthUnit : null;
     }
     list.push(visit);
   }
@@ -87,7 +93,19 @@ function live(todayVisits, referrals) {
     rt: v.rt || "Dra. Ana Souza",
     referrals: referrals
       .filter((r) => r.visitId === v.id)
-      .map((r) => ({ id: r.id, status: r.status, createdAt: r.createdAt, statusAt: r.statusAt, priority: r.priority, doctor: r.doctor.name, from: r.from.name })),
+      .map((r) => ({
+        id: r.id,
+        code: r.code,
+        status: r.status,
+        createdAt: r.createdAt,
+        statusAt: r.statusAt,
+        priority: r.priority,
+        healthUnit: r.healthUnit?.name ?? null,
+        reader: r.readBy?.name ?? r.doctor?.name ?? "Médico(a) da unidade",
+        doctor: r.doctor?.name ?? null,
+        answeredUnit: r.answeredUnit ?? null,
+        from: r.from.name,
+      })),
   }));
 }
 
@@ -110,13 +128,13 @@ export function trackVisit(pharmacies, visitId, ctx) {
 
   const timeline = [{ at: visit.at, action: "create", label: "Atendimento registrado", actor: visit.rt, role: "farmaceutico", changes: {} }];
   for (const r of visit.referrals) {
-    timeline.push({ at: r.createdAt, action: "referral_create", label: "Encaminhado a médico", actor: r.from, role: "farmaceutico", changes: {}, doctor: r.doctor });
+    timeline.push({ at: r.createdAt, action: "referral_create", label: "Encaminhado à unidade de saúde", actor: r.from, role: "farmaceutico", changes: {}, destination: r.healthUnit });
     if (r.status !== "sent" && r.status !== "cancelled") {
-      timeline.push({ at: r.status === "read" ? r.statusAt : addMin(r.createdAt, 40), action: "referral_read", label: "Encaminhamento lido pelo médico", actor: r.doctor, role: "medico", changes: { status: ["sent", "read"] } });
+      timeline.push({ at: r.status === "read" ? r.statusAt : addMin(r.createdAt, 40), action: "referral_read", label: "Encaminhamento lido pelo médico", actor: r.reader, role: "medico", changes: { status: ["sent", "read"] } });
     }
     if (["answered", "declined"].includes(r.status)) {
       const label = r.status === "answered" ? "Médico respondeu o encaminhamento" : "Médico recusou o encaminhamento";
-      timeline.push({ at: r.statusAt, action: `referral_${r.status}`, label, actor: r.doctor, role: "medico", changes: { status: ["read", r.status] } });
+      timeline.push({ at: r.statusAt, action: `referral_${r.status}`, label, actor: r.doctor ?? r.reader, role: "medico", changes: { status: ["read", r.status] } });
     }
     if (r.status === "cancelled") {
       timeline.push({ at: r.statusAt, action: "referral_cancelled", label: "Encaminhamento cancelado", actor: r.from, role: "farmaceutico", changes: { status: ["sent", "cancelled"] } });
@@ -124,5 +142,6 @@ export function trackVisit(pharmacies, visitId, ctx) {
   }
   timeline.sort((a, b) => a.at.localeCompare(b.at));
   const { referrals, ...summary } = visit;
-  return { visit: summary, unit: unitId, unitName: data.unitName, referrals, timeline };
+  // o "leitor" é só da demonstração (a API devolve quem respondeu)
+  return { visit: summary, unit: unitId, unitName: data.unitName, referrals: referrals.map((r) => Object.fromEntries(Object.entries(r).filter(([k]) => k !== "reader"))), timeline };
 }

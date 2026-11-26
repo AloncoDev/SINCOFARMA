@@ -38,9 +38,10 @@ export default function Usuarios() {
 
   // estado só muda quando a resposta chega (nada síncrono dentro do efeito)
   const fetchUsers = useCallback(() => {
-    repository.listUsers().then(
-      (res) => {
-        setData(res);
+    // usuários + unidades de saúde (o médico é ligado a uma delas)
+    Promise.all([repository.listUsers(), repository.listHealthUnits().catch(() => ({ units: [] }))]).then(
+      ([res, health]) => {
+        setData({ ...res, healthUnits: health.units });
         setStatus("ready");
       },
       (err) => {
@@ -56,6 +57,7 @@ export default function Usuarios() {
   };
 
   const unitName = useMemo(() => Object.fromEntries(data.units.map((u) => [u.id, u.name])), [data.units]);
+  const healthName = useMemo(() => Object.fromEntries((data.healthUnits ?? []).map((u) => [u.id, u.name])), [data.healthUnits]);
   const term = q.trim().toLowerCase();
   const users = data.users.filter(
     (u) => (role === "all" || u.roles.includes(role)) && (!term || `${u.name} ${u.email}`.toLowerCase().includes(term))
@@ -143,7 +145,7 @@ export default function Usuarios() {
                 <th>PESSOA</th>
                 <th>CPF</th>
                 <th>PERFIL</th>
-                <th>FARMÁCIA</th>
+                <th>FARMÁCIA / UNIDADE</th>
                 <th>SITUAÇÃO</th>
                 <th className="ta-center">AÇÃO</th>
               </tr>
@@ -172,7 +174,14 @@ export default function Usuarios() {
                     </td>
                     <td className="mono">{u.cpf}</td>
                     <td><div className="role-chips"><RoleChips roles={u.roles} /></div></td>
-                    <td>{u.unit ? unitName[u.unit] ?? u.unit : <span className="muted">—</span>}</td>
+                    <td>
+                      {u.unit ? unitName[u.unit] ?? u.unit : u.healthUnit ? healthName[u.healthUnit] ?? u.healthUnit : null}
+                      {!u.unit && !u.healthUnit && (
+                        <span className={u.roles.includes("medico") ? "user-nounit" : "muted"}>
+                          {u.roles.includes("medico") ? "Sem unidade de saúde" : "—"}
+                        </span>
+                      )}
+                    </td>
                     <td><span className={`user-status user-status--${s.tone}`}>{s.label}</span></td>
                     <td className="ta-center">
                       <button
@@ -199,6 +208,7 @@ export default function Usuarios() {
         open={!!editing}
         user={editing === "new" ? null : editing}
         units={data.units}
+        healthUnits={data.healthUnits ?? []}
         onClose={() => setEditing(null)}
         onSaved={saved}
       />

@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import AppLayout from "./layouts/AppLayout";
 import { ClinicProvider } from "./contexts/ClinicProvider";
 import { useAuth } from "./contexts/auth";
 import RouteFallback from "./components/RouteFallback";
 import { pode, podeRota, rotaInicial } from "./services/permissoes";
 import { appPages, loaders } from "./pages/loaders";
+import { rememberGuide, pendingGuide } from "./utils/guia";
 
 const Login = lazy(loaders.Login);
 const Dashboard = lazy(loaders.Dashboard);
@@ -15,6 +16,9 @@ const Acompanhamento = lazy(loaders.Acompanhamento);
 const AcompanhamentoDetalhe = lazy(loaders.AcompanhamentoDetalhe);
 const Encaminhamentos = lazy(loaders.Encaminhamentos);
 const Encaminhamento = lazy(loaders.Encaminhamento);
+const Guia = lazy(loaders.Guia);
+const GuiaCodigo = lazy(loaders.GuiaCodigo);
+const UnidadesSaude = lazy(loaders.UnidadesSaude);
 const Farmacias = lazy(loaders.Farmacias);
 const Relatorios = lazy(loaders.Relatorios);
 const SemAcesso = lazy(loaders.SemAcesso);
@@ -41,6 +45,9 @@ function usePreloadPages(enabled) {
 
 function PrivateRoute({ children }) {
   const { user } = useAuth();
+  const { pathname } = useLocation();
+  // guia aberta pelo QR sem login: volta para ela depois de entrar
+  if (!user) rememberGuide(pathname);
   return user ? children : <Navigate to="/login" replace />;
 }
 
@@ -53,13 +60,13 @@ function Permitida({ path, children }) {
 /** Destino padrão de quem está logado (depende do perfil). */
 function Inicio() {
   const { user } = useAuth();
-  return <Navigate to={user ? rotaInicial(user) : "/login"} replace />;
+  return <Navigate to={user ? pendingGuide() ?? rotaInicial(user) : "/login"} replace />;
 }
 
 /** Quem já está logado não vê a tela de login. */
 function PublicOnly({ children }) {
   const { user } = useAuth();
-  return user ? <Navigate to={rotaInicial(user)} replace /> : children;
+  return user ? <Navigate to={pendingGuide() ?? rotaInicial(user)} replace /> : children;
 }
 
 /** Farmacêutico vê os atendimentos da farmácia; a administração, o acompanhamento da rede (sem pacientes). */
@@ -78,7 +85,12 @@ const PAGINAS = [
   ["/encaminhamentos", <Encaminhamentos />],
   // caso aberto: mesma permissão da lista
   ["/encaminhamentos/:id", <Encaminhamento />, "/encaminhamentos"],
+  // guia de encaminhamento para imprimir
+  ["/encaminhamentos/:id/guia", <Guia />, "/encaminhamentos"],
+  // endereço do QR code da guia
+  ["/guia/:code", <GuiaCodigo />, "/encaminhamentos"],
   ["/farmacias", <Farmacias />],
+  ["/unidades-saude", <UnidadesSaude />],
   ["/relatorios", <Relatorios />],
   ["/usuarios", <Usuarios />],
   ["/minha-conta", <MinhaConta />],

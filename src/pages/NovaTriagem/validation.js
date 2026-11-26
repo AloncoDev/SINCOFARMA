@@ -25,6 +25,8 @@ export function validateTriage(form, now = new Date()) {
   const today = startOfDay(now);
   return {
     cpf: isValidCpf(form.cpf),
+    // cartão do SUS é opcional; se preenchido, os 15 dígitos
+    cns: !form.cns || form.cns.replace(/\D/g, "").length === 15,
     nome: form.nome.trim().split(/\s+/).length >= 2,
     nascimento: isValidPastDate(form.nascimento, now),
     sexo: !!form.sexo,
@@ -55,7 +57,7 @@ export function paError(form) {
 export function buildSteps(form, ok) {
   const historicoFilled = form.alergias.length + form.comorbidades.length + form.medicamentos.length > 0;
   const steps = [
-    { n: 1, title: "Identificação", target: "tg-identificacao", ok: ok.cpf && ok.nome && ok.nascimento && ok.sexo },
+    { n: 1, title: "Identificação", target: "tg-identificacao", ok: ok.cpf && ok.cns && ok.nome && ok.nascimento && ok.sexo },
     { n: 2, title: "Queixa principal", target: "tg-queixa", ok: ok.queixa && ok.inicioSintomas },
     { n: 3, title: "Histórico clínico", target: "tg-historico", ok: historicoFilled, optional: true },
     { n: 4, title: "Sinais vitais", target: "tg-sinais", ok: ok.paSis && ok.paDia && ok.fc && ok.spo2 && ok.temp && ok.peso && ok.altura },

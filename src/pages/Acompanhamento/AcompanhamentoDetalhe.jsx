@@ -120,16 +120,18 @@ export default function AcompanhamentoDetalhe() {
 
             {data.referrals.length > 0 && (
               <SpotlightCard index={5} className="track-card">
-                <h2>Encaminhamento{data.referrals.length > 1 ? "s" : ""} a médico</h2>
+                <h2>Encaminhamento{data.referrals.length > 1 ? "s" : ""} à unidade de saúde</h2>
                 <ul className="track-refs">
                   {data.referrals.map((r) => (
                     <li key={r.id}>
                       <div className="track-ref-head">
-                        <strong>{r.doctor}</strong>
+                        <strong>{r.healthUnit ?? r.doctor}</strong>
                         <span className={`status status--${REFERRAL_STATUS[r.status].tone}`}><i />{REFERRAL_STATUS[r.status].short}</span>
                       </div>
                       <small>
+                        {r.code && <>Guia <b className="mono">{r.code}</b> · </>}
                         {PRIORITIES[r.priority]?.label ?? r.priority} · enviado por {r.from} em {when(r.createdAt)}
+                        {r.healthUnit && r.doctor ? ` · respondido por ${r.doctor}${r.answeredUnit && r.answeredUnit !== r.healthUnit ? ` (${r.answeredUnit})` : ""}` : ""}
                         {r.statusAt && r.status !== "sent" ? ` · ${REFERRAL_STATUS[r.status].label.toLowerCase()} em ${when(r.statusAt)}` : ""}
                       </small>
                     </li>
@@ -144,7 +146,8 @@ export default function AcompanhamentoDetalhe() {
             <ol className="track-timeline">
               {data.timeline.map((t, i) => {
                 const R = ROLE[t.role];
-                const extra = [changeText(t.changes), t.doctor ? `para ${t.doctor}` : ""].filter(Boolean).join(" · ");
+                const to = t.destination ?? t.doctor;
+                const extra = [changeText(t.changes), to ? `para ${to}` : ""].filter(Boolean).join(" · ");
                 return (
                   <motion.li key={`${t.at}-${i}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 + i * 0.06 }}>
                     <span className={`track-dot track-dot--${t.role ?? "none"}`} aria-hidden="true">{R ? <R.icon size={13} /> : null}</span>

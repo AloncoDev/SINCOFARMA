@@ -33,6 +33,7 @@ def _table(ddb, name):
 
 
 DOCTORS = {"39053344705": "Dr. Paulo Lima", "71428793860": "Dra. Carla Nunes"}
+HEALTH_UNITS = [("ubs-1-asa-sul", "UBS 1 Asa Sul", "ubs"), ("upa-ceilandia", "UPA Ceilândia", "upa")]
 
 
 def doctor_sub(username: str) -> str:
@@ -73,6 +74,10 @@ def aws(monkeypatch):
         boto3.resource("dynamodb", region_name=REGION).Table("painel-test").put_item(
             Item={"PK": "UNIT#asa-sul", "SK": "PROFILE", "name": "Drogaria Planalto — Asa Sul", "monthGoal": 525, "triageGoalMin": 10}
         )
+        # unidades de saúde (destino dos encaminhamentos)
+        painel = boto3.resource("dynamodb", region_name=REGION).Table("painel-test")
+        for unit, name, kind in HEALTH_UNITS:
+            painel.put_item(Item={"PK": f"SAUDE#{unit}", "SK": "PROFILE", "name": name, "kind": kind, "region": "DF"})
         yield api
 
 

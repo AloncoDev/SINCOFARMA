@@ -18,7 +18,7 @@ def ana():
 
 
 def medico():
-    return {"user": "39053344705", "groups": "[papel:medico]", "sub": doctor_sub("39053344705")}
+    return {"user": "39053344705", "groups": "[papel:medico saude:ubs-1-asa-sul]", "sub": doctor_sub("39053344705")}
 
 
 def nova_visita(api):
@@ -28,7 +28,7 @@ def nova_visita(api):
 
 
 def encaminhar(api, visit):
-    body = {"visitId": visit["id"], "doctorId": doctor_sub("39053344705"), "reason": "Avaliar cefaleia", "priority": "rotina"}
+    body = {"visitId": visit["id"], "healthUnitId": "ubs-1-asa-sul", "reason": "Avaliar cefaleia", "priority": "rotina"}
     resp = api.criar_encaminhamento(event("POST", "/encaminhamentos", body, **ana()), None)
     assert resp["statusCode"] == 201
     return body_of(resp)
@@ -77,9 +77,15 @@ def test_farmaceutico_baixa_os_proprios_dados_sem_dados_de_paciente(aws):
 
 def test_medico_ve_os_encaminhamentos_recebidos_sem_o_paciente(aws):
     ref = encaminhar(aws, nova_visita(aws))
+    # ainda sem resposta: não é "do médico"
+    assert body_of(meus_dados(aws, **medico()))["encaminhamentosRecebidos"] == []
+    body = {"status": "answered", "response": "Paciente orientado e liberado."}
+    aws.atualizar_encaminhamento(event("PATCH", f"/encaminhamentos/{ref['id']}", body, path_params={"id": ref["id"]}, **medico()), None)
     resp = meus_dados(aws, **medico())
     dados = body_of(resp)
     assert [r["protocolo"] for r in dados["encaminhamentosRecebidos"]] == [ref["protocol"]]
+    assert dados["encaminhamentosRecebidos"][0]["guia"] == ref["code"]
+    assert dados["conta"]["unidadeDeSaude"] == "UBS 1 Asa Sul"
     assert "Maria Teste" not in resp["body"]
 
 
@@ -156,10 +162,10 @@ def test_administracao_exporta_os_dados_do_paciente(aws):
     assert atend["protocolo"] == visit["protocol"]
     assert atend["paciente"]["name"] == "Maria Teste"
     assert atend["farmacia"] == "Drogaria Planalto — Asa Sul"
-    assert [a["acao"] for a in atend["registroDeAlteracoes"]] == ["Atendimento registrado", "Encaminhado a médico"]
+    assert [a["acao"] for a in atend["registroDeAlteracoes"]] == ["Atendimento registrado", "Encaminhado à unidade de saúde"]
     [ref] = dados["encaminhamentos"]
     # com quem o dado foi compartilhado (art. 18, VII)
-    assert ref["medico"] == "Dr. Paulo Lima"
+    assert ref["unidadeDeSaude"] == "UBS 1 Asa Sul" and ref["codigoGuia"].startswith("ENC-")
     # a exportação fica no registro geral, com o CPF mascarado
     [ev] = [e for e in auditoria_geral() if e["action"] == "lgpd_export_patient"]
     assert ev["target"]["label"] == "***.***.***-09"

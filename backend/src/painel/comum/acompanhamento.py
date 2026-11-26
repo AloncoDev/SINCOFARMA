@@ -29,7 +29,7 @@ ACTION_ROLE = {
 # campos de mudança que podem aparecer (situação, nunca conteúdo clínico)
 SAFE_CHANGES = ("status", "urgent", "priority")
 # campos de controle lidos (muitos nomes são reservados no DynamoDB: todos vão com "#")
-REF_FIELDS = ("id", "visitId", "status", "statusAt", "createdAt", "priority", "urgent", "doctor", "from")
+REF_FIELDS = ("id", "code", "visitId", "status", "statusAt", "createdAt", "priority", "urgent", "healthUnit", "doctor", "from", "answeredUnit")
 TRAIL_FIELDS = ("SK", "unit", "protocol", "action", "at", "actorSub", "actorUsername", "referral", "changes")
 
 
@@ -60,7 +60,12 @@ def _referral(ref: dict) -> dict:
         "statusAt": ref.get("statusAt"),
         "createdAt": ref.get("createdAt"),
         "priority": ref.get("priority"),
-        "doctor": (ref.get("doctor") or {}).get("name", "—"),
+        "code": ref.get("code"),
+        # destino: a unidade de saúde (nos antigos, o médico escolhido)
+        "healthUnit": (ref.get("healthUnit") or {}).get("name"),
+        # quem respondeu (nos antigos, o médico escolhido)
+        "doctor": (ref.get("doctor") or {}).get("name"),
+        "answeredUnit": ref.get("answeredUnit"),
         "from": (ref.get("from") or {}).get("name", "—"),
     }
 
@@ -152,7 +157,7 @@ def detail(caller, visit_id: str) -> dict:
             "actor": repo._actor_name(h),
             "role": ACTION_ROLE.get(h["action"]),
             "changes": changes,
-            **({"doctor": ref["doctor"]["name"]} if ref and h["action"] == "referral_create" else {}),
+            **({"destination": (ref.get("healthUnit") or ref.get("doctor") or {}).get("name")} if ref and h["action"] == "referral_create" else {}),
         })
 
     names = _unit_names()

@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from .http import HttpError
 
 UNIT_PREFIX = "unidade:"
+# médico: a unidade de saúde (UBS, UPA, hospital...) onde atende; recebe os encaminhamentos dela
+HEALTH_PREFIX = "saude:"
 ROLE_PREFIX = "papel:"
 ROLES = ("farmaceutico", "medico", "admin")
 
@@ -29,6 +31,12 @@ PERMISSOES: dict[str, frozenset[str]] = {
     "ver_encaminhamentos": frozenset({"farmaceutico", "medico"}),
     "criar_encaminhamento": frozenset({"farmaceutico"}),  # também cancela os da própria farmácia
     "responder_encaminhamento": frozenset({"medico"}),
+    # achar a guia de encaminhamento pelo código, CPF ou QR code: a farmácia (as dela) e o médico (de qualquer unidade)
+    "localizar_guia": frozenset({"farmaceutico", "medico"}),
+    # lista de unidades de saúde para escolher o destino do encaminhamento
+    "ver_unidades_saude": frozenset({"farmaceutico", "admin"}),
+    # cadastrar unidades de saúde e ajustar nome e tipo
+    "gerenciar_unidades_saude": frozenset({"admin"}),
     # cadastrar pessoas, trocar perfil e farmácia, desativar, resetar MFA
     "gerenciar_usuarios": frozenset({"admin"}),
     # cadastrar farmácias e ajustar nome e metas; a lista mostra só números agregados
@@ -56,6 +64,7 @@ class Caller:
     unit_id: str | None
     roles: frozenset[str]
     groups: tuple[str, ...]
+    health_unit: str | None = None
 
     def pode(self, permissao: str) -> bool:
         return bool(self.roles & PERMISSOES[permissao])
@@ -98,7 +107,12 @@ def caller_from_event(event: dict) -> Caller:
     if not units and roles & _PAPEIS_DE_UNIDADE:
         raise HttpError(403, "Usuário sem unidade vinculada. Procure o administrador.")
 
+    health = [g[len(HEALTH_PREFIX):] for g in groups if g.startswith(HEALTH_PREFIX)]
+    if len(health) > 1:
+        raise HttpError(403, "Usuário vinculado a mais de uma unidade de saúde. Procure o administrador.")
+
     return Caller(
+        health_unit=health[0] if health else None,
         sub=str(claims.get("sub", "")),
         username=str(claims.get("username", "")),
         unit_id=units[0] if units else None,

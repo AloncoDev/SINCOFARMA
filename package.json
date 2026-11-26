@@ -17,6 +17,7 @@
     "amazon-cognito-identity-js": "6.3.22",
     "buffer": "4.9.2",
     "framer-motion": "^14.5.0",
+    "jsqr": "^1.4.0",
     "lucide-react": "^1.60.0",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",

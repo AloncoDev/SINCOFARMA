@@ -6,15 +6,19 @@ from conftest import REGION, body_of, doctor_sub, event
 from test_api import clinico_items, post_visit
 
 PAULO, CARLA = "39053344705", "71428793860"
+UBS, UPA = "ubs-1-asa-sul", "upa-ceilandia"
+# cada médico atende numa unidade de saúde
+UNIDADE_DO_MEDICO = {PAULO: UBS, CARLA: UPA}
 OUTRO_FARMACEUTICO = {"user": "11144477735"}  # mesma farmácia
 
 
-def as_doctor(username):
-    return {"user": username, "groups": "[papel:medico]", "sub": doctor_sub(username)}
+def as_doctor(username, unit=None):
+    unit = unit or UNIDADE_DO_MEDICO[username]
+    return {"user": username, "groups": f"[papel:medico saude:{unit}]", "sub": doctor_sub(username)}
 
 
-def send(api, visit_id, doctor=PAULO, **kw):
-    body = {"visitId": visit_id, "doctorId": doctor_sub(doctor), "reason": "Avaliar dor torácica atípica", "priority": "urgente"}
+def send(api, visit_id, health=UBS, **kw):
+    body = {"visitId": visit_id, "healthUnitId": health, "reason": "Avaliar dor torácica atípica", "priority": "urgente"}
     return api.criar_encaminhamento(event("POST", "/encaminhamentos", body, **kw), None)
 
 
@@ -30,28 +34,37 @@ def mudar(api, ref_id, body, **kw):
     return api.atualizar_encaminhamento(event("PATCH", f"/encaminhamentos/{ref_id}", body, path_params={"id": ref_id}, **kw), None)
 
 
-def new_referral(api, doctor=PAULO):
+def buscar(api, body, **kw):
+    return api.localizar_guia(event("POST", "/guias/busca", body, **kw), None)
+
+
+def new_referral(api, health=UBS):
     visit = body_of(post_visit(api))
-    resp = send(api, visit["id"], doctor)
+    resp = send(api, visit["id"], health)
     assert resp["statusCode"] == 201, resp["body"]
     return body_of(resp)
 
 
 # ---------------------------------------------------------------- envio
 
-def test_farmaceutico_lista_medicos_sem_cpf(aws):
-    resp = aws.listar_medicos(event(path="/medicos"), None)
+def test_farmaceutico_lista_unidades_de_saude(aws):
+    resp = aws.listar_unidades_saude(event(path="/unidades-saude"), None)
     assert resp["statusCode"] == 200
-    doctors = body_of(resp)["doctors"]
-    assert [d["name"] for d in doctors] == ["Dr. Paulo Lima", "Dra. Carla Nunes"]
-    assert PAULO not in resp["body"] and CARLA not in resp["body"]
+    units = body_of(resp)["units"]
+    assert [u["name"] for u in units] == ["UBS 1 Asa Sul", "UPA Ceilândia"]
+    assert "doctors" not in units[0]  # quantos médicos: só a administração vê
+    # as unidades de saúde não aparecem como farmácias
+    farmacias = body_of(aws.listar_unidades(event(path="/unidades", groups="[papel:admin]"), None))["units"]
+    assert [u["id"] for u in farmacias] == ["asa-sul"]
 
 
-def test_envia_com_copia_da_ficha_e_cpf_mascarado(aws):
+def test_envia_para_a_unidade_com_guia_e_cpf_mascarado(aws):
     ref = new_referral(aws)
     assert ref["status"] == "sent"
-    assert ref["doctor"]["name"] == "Dr. Paulo Lima"
-    assert ref["from"]["name"] == "Dra. Ana Souza"
+    assert ref["healthUnit"] == {"id": UBS, "name": "UBS 1 Asa Sul", "kind": "ubs"}
+    assert ref["doctor"] is None  # ninguém respondeu ainda
+    assert ref["code"].startswith("ENC-") and len(ref["code"]) == 13
+    assert ref["from"]["name"] == "Dra. Ana Souza" and ref["from"]["crf"] == "4192"
     assert ref["patient"]["name"] == "Maria Teste"
     assert ref["patient"]["cpf"] == "***.***.***-09"
     assert ref["clinical"]["history"]["allergies"] == ["Dipirona"]
@@ -62,15 +75,15 @@ def test_envia_com_copia_da_ficha_e_cpf_mascarado(aws):
 
 def test_validacao_do_envio(aws):
     visit = body_of(post_visit(aws))
-    resp = aws.criar_encaminhamento(event("POST", "/encaminhamentos", {"visitId": visit["id"], "doctorId": "x", "reason": "ok"}), None)
+    body = {"visitId": visit["id"], "healthUnitId": "X!", "reason": "ok"}
+    resp = aws.criar_encaminhamento(event("POST", "/encaminhamentos", body), None)
     assert resp["statusCode"] == 422
-    assert set(body_of(resp)["details"]["fields"]) == {"doctorId", "reason"}
+    assert set(body_of(resp)["details"]["fields"]) == {"healthUnitId", "reason"}
 
 
-def test_medico_inexistente_ou_fora_do_grupo(aws):
+def test_unidade_de_saude_inexistente(aws):
     visit = body_of(post_visit(aws))
-    body = {"visitId": visit["id"], "doctorId": "00000000-0000-4000-8000-000000000000", "reason": "Avaliação"}
-    assert aws.criar_encaminhamento(event("POST", "/encaminhamentos", body), None)["statusCode"] == 422
+    assert send(aws, visit["id"], "ubs-que-nao-existe")["statusCode"] == 422
 
 
 def test_atendimento_de_outra_farmacia_nao_encontra(aws):
@@ -87,22 +100,34 @@ def test_so_farmaceutico_envia(aws):
 
 # ---------------------------------------------------------------- quem vê o quê
 
-def test_medico_so_ve_os_seus(aws):
-    para_paulo = new_referral(aws, PAULO)
-    new_referral(aws, CARLA)
+def test_caixa_da_unidade_de_saude(aws):
+    para_ubs = new_referral(aws, UBS)
+    para_upa = new_referral(aws, UPA)
 
     caixa = listar(aws, **as_doctor(PAULO))
-    assert [r["id"] for r in caixa] == [para_paulo["id"]]
-    assert "clinical" not in caixa[0] and "patient" not in caixa[0]  # lista só com resumo
+    assert [r["id"] for r in caixa] == [para_ubs["id"]]
+    assert caixa[0]["healthUnitName"] == "UBS 1 Asa Sul" and caixa[0]["code"] == para_ubs["code"]
+    assert "clinical" not in caixa[0]  # lista só com resumo
+    assert [r["id"] for r in listar(aws, **as_doctor(CARLA))] == [para_upa["id"]]
 
-    # o de outro médico: mesma resposta de inexistente
-    outro = listar(aws, **as_doctor(CARLA))[0]
-    assert abrir(aws, outro["id"], **as_doctor(PAULO))["statusCode"] == 404
+
+def test_medico_sem_unidade_tem_caixa_vazia(aws):
+    new_referral(aws, UBS)
+    sem_unidade = {"user": PAULO, "groups": "[papel:medico]", "sub": doctor_sub(PAULO)}
+    assert listar(aws, **sem_unidade) == []
+
+
+def test_medico_de_outra_unidade_abre_pela_guia(aws):
+    """O paciente pode chegar com a guia a outra unidade: ela acha e abre (fica registrado)."""
+    ref = new_referral(aws, UBS)
+    resp = abrir(aws, ref["id"], **as_doctor(CARLA))
+    assert resp["statusCode"] == 200
+    assert body_of(resp)["mine"] is False
 
 
 def test_farmacia_ve_os_que_enviou(aws):
-    new_referral(aws, PAULO)
-    new_referral(aws, CARLA)
+    new_referral(aws, UBS)
+    new_referral(aws, UPA)
     assert len(listar(aws, **OUTRO_FARMACEUTICO)) == 2
     assert listar(aws, groups="[unidade:taguatinga papel:farmaceutico]") == []
 
@@ -110,6 +135,43 @@ def test_farmacia_ve_os_que_enviou(aws):
 def test_admin_nao_ve_encaminhamentos(aws):
     new_referral(aws)
     assert aws.listar_encaminhamentos(event(path="/encaminhamentos", groups="[papel:admin]"), None)["statusCode"] == 403
+
+
+# ---------------------------------------------------------------- guia: busca pelo código ou CPF
+
+def test_busca_pelo_codigo_em_qualquer_formato(aws):
+    ref = new_referral(aws)
+    raw = ref["code"].replace("ENC-", "").replace("-", "")
+    for typed in (ref["code"], ref["code"].lower(), raw, f"enc {raw[:4]} {raw[4:]}"):
+        found = body_of(buscar(aws, {"code": typed}, **as_doctor(CARLA)))["referrals"]
+        assert [r["id"] for r in found] == [ref["id"]], typed
+
+
+def test_busca_pelo_cpf(aws):
+    a = new_referral(aws, UBS)
+    b = new_referral(aws, UPA)
+    found = body_of(buscar(aws, {"cpf": "123.456.789-09"}, **as_doctor(PAULO)))["referrals"]
+    assert {r["id"] for r in found} == {a["id"], b["id"]}
+    assert body_of(buscar(aws, {"cpf": "52998224725"}, **as_doctor(PAULO)))["referrals"] == []
+
+
+def test_farmacia_so_acha_as_dela(aws):
+    ref = new_referral(aws)
+    assert len(body_of(buscar(aws, {"code": ref["code"]}))["referrals"]) == 1
+    outra = body_of(buscar(aws, {"code": ref["code"]}, groups="[unidade:taguatinga papel:farmaceutico]"))
+    assert outra["referrals"] == []
+
+
+def test_busca_validada_e_registrada_sem_cpf(aws):
+    assert buscar(aws, {"code": "ENC-0000-1111"})["statusCode"] == 422  # 0 e 1 não existem no código
+    assert buscar(aws, {"cpf": "111.111.111-11"})["statusCode"] == 422
+    assert buscar(aws, {})["statusCode"] == 422
+    assert buscar(aws, {"cpf": "123.456.789-09"}, groups="[papel:admin]")["statusCode"] == 403
+    buscar(aws, {"cpf": "123.456.789-09"})
+    items = boto3.resource("dynamodb", region_name=REGION).Table("painel-test").scan()["Items"]
+    buscas = [i for i in items if i["PK"].startswith("AUDIT#") and i["action"] == "referral_search"]
+    assert len(buscas) == 1 and buscas[0]["details"]["by"] == "cpf"
+    assert "12345678909" not in str(buscas)
 
 
 # ---------------------------------------------------------------- ciclo de vida
@@ -121,9 +183,14 @@ def test_medico_abre_responde_e_farmacia_ve_a_resposta(aws):
     assert aberto["status"] == "read"
     assert aberto["clinical"]["vitals"]["spo2"] == 98
 
+    assert aberto["readBy"] == {"id": doctor_sub(PAULO), "name": "Dr. Paulo Lima", "unit": "UBS 1 Asa Sul"}
+
     resp = mudar(aws, ref["id"], {"status": "answered", "response": "Paciente pode seguir com analgesia; retorno se piorar."}, **as_doctor(PAULO))
     assert resp["statusCode"] == 200
-    assert body_of(resp)["status"] == "answered"
+    respondido = body_of(resp)
+    assert respondido["status"] == "answered"
+    assert respondido["doctor"]["name"] == "Dr. Paulo Lima" and respondido["answeredUnit"] == "UBS 1 Asa Sul"
+    assert listar(aws, **as_doctor(PAULO))[0]["doctorName"] == "Dr. Paulo Lima"  # resumo mostra quem respondeu
 
     da_farmacia = body_of(abrir(aws, ref["id"]))
     assert da_farmacia["response"].startswith("Paciente pode seguir")
@@ -168,3 +235,11 @@ def test_ficha_do_encaminhamento_nao_muda_com_o_atendimento(aws):
     table = boto3.resource("dynamodb", region_name=REGION).Table("clinico-test")
     table.update_item(Key={"PK": f"VISIT#{ref['visitId']}", "SK": "RECORD"}, UpdateExpression="SET notes = :n", ExpressionAttributeValues={":n": "mudou"})
     assert body_of(abrir(aws, ref["id"], **as_doctor(PAULO)))["clinical"]["notes"] == "Observação confidencial"
+
+
+def test_medico_de_outra_unidade_tambem_responde(aws):
+    """Se o paciente foi atendido em outra unidade, quem atendeu registra a resposta."""
+    ref = new_referral(aws, UBS)
+    resp = mudar(aws, ref["id"], {"status": "answered", "response": "Atendido na UPA; liberado com orientações."}, **as_doctor(CARLA))
+    assert resp["statusCode"] == 200
+    assert body_of(resp)["answeredUnit"] == "UPA Ceilândia"

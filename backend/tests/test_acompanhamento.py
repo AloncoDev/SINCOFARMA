@@ -61,7 +61,8 @@ def test_lista_do_dia_com_farmaceutico_e_medico(aws):
     assert enc["rt"] == "Dra. Ana Souza" and enc["protocol"].startswith("SIN-")
     assert enc["referrals"] == [{
         "id": ref["id"], "status": "answered", "statusAt": enc["referrals"][0]["statusAt"], "createdAt": ref["createdAt"],
-        "priority": "urgente", "doctor": "Dr. Paulo Lima", "from": "Dra. Ana Souza",
+        "priority": "urgente", "code": ref["code"], "healthUnit": "UBS 1 Asa Sul", "doctor": "Dr. Paulo Lima",
+        "answeredUnit": "UBS 1 Asa Sul", "from": "Dra. Ana Souza",
     }]
     assert next(v for v in data["visits"] if v["id"] != visit["id"])["referrals"] == []
     _sem_paciente(data)
@@ -82,7 +83,7 @@ def test_linha_do_tempo_com_quem_fez_o_que(aws):
         ("referral_answered", "Dr. Paulo Lima", "medico"),
         ("update", "Dra. Ana Souza", "farmaceutico"),
     ]
-    assert data["timeline"][1]["doctor"] == "Dr. Paulo Lima"
+    assert data["timeline"][1]["destination"] == "UBS 1 Asa Sul"
     assert data["referrals"][0]["status"] == "answered"
     _sem_paciente(data)
 

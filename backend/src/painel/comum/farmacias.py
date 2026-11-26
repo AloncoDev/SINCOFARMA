@@ -21,7 +21,7 @@ def _pool() -> str:
 
 def profiles() -> list[dict]:
     """Perfis completos de todas as farmácias (mesma varredura de list_units)."""
-    kwargs = {"FilterExpression": Attr("SK").eq("PROFILE")}
+    kwargs = {"FilterExpression": Attr("SK").eq("PROFILE") & Attr("PK").begins_with("UNIT#")}
     items = []
     while True:
         resp = repo._painel().scan(**kwargs)

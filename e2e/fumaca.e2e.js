@@ -14,7 +14,7 @@ const CSP = vercel.headers
 const TELAS = {
   farmaceutico: ["/dashboard", "/atendimentos", "/nova-triagem", "/encaminhamentos", "/minha-conta"],
   medico: ["/encaminhamentos", "/minha-conta"],
-  admin: ["/dashboard", "/atendimentos", "/farmacias", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/minha-conta"],
+  admin: ["/dashboard", "/atendimentos", "/farmacias", "/unidades-saude", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/minha-conta"],
 };
 
 const DEMO_SENHA = "12345678";
@@ -100,12 +100,12 @@ test("administração acompanha um atendimento: quem cuidou e a situação, sem 
   await page.goto("/atendimentos?unidade=ceilandia-norte&filtro=doctor&dia=2026-11-03");
   await expect(page.getByRole("heading", { name: "Atendimentos da rede" })).toBeVisible();
   const linha = page.locator('tr[role="link"]').first();
-  await expect(linha).toContainText(/Dr\.|Dra\./);
+  await expect(linha).toContainText(/UBS|UPA|Policlínica/);
   await linha.click();
   await expect(page).toHaveURL(/\/atendimentos\/[^/]+$/);
   await expect(page.getByRole("heading", { name: "Linha do tempo" })).toBeVisible();
   await expect(page.getByText("Atendimento registrado")).toBeVisible();
-  await expect(page.getByText("Encaminhado a médico")).toBeVisible();
+  await expect(page.getByText("Encaminhado à unidade de saúde")).toBeVisible();
   // nada que identifique o paciente
   await expect(page.locator("main")).not.toContainText(/CPF \*|\*\*\*\./);
   expect(erros).toEqual([]);

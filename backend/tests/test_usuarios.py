@@ -75,9 +75,16 @@ def test_cpf_repetido_e_farmacia_inexistente(aws):
 
 def test_troca_perfil_e_farmacia(aws):
     paulo = by_name(aws, "Dr. Paulo Lima")
-    resp = mudar(aws, paulo["id"], {"roles": ["medico", "admin"]})
+    # médico precisa de unidade de saúde
+    assert mudar(aws, paulo["id"], {"roles": ["medico", "admin"]})["statusCode"] == 422
+    resp = mudar(aws, paulo["id"], {"roles": ["medico", "admin"], "healthUnit": "ubs-1-asa-sul"})
     assert body_of(resp)["roles"] == ["admin", "medico"]
-    assert groups_of("39053344705") == ["papel:admin", "papel:medico"]
+    assert body_of(resp)["healthUnit"] == "ubs-1-asa-sul"
+    assert groups_of("39053344705") == ["papel:admin", "papel:medico", "saude:ubs-1-asa-sul"]
+    # troca de unidade: sai do grupo antigo
+    assert body_of(mudar(aws, paulo["id"], {"healthUnit": "upa-ceilandia"}))["healthUnit"] == "upa-ceilandia"
+    assert groups_of("39053344705") == ["papel:admin", "papel:medico", "saude:upa-ceilandia"]
+    assert mudar(aws, paulo["id"], {"healthUnit": "nao-existe"})["statusCode"] == 422
     # médico sem CRF não vira farmacêutico
     assert mudar(aws, paulo["id"], {"roles": ["farmaceutico"], "unit": "asa-sul"})["statusCode"] == 422
 
@@ -90,7 +97,7 @@ def test_desativa_e_reativa(aws):
 
 def test_admin_nao_se_tranca_para_fora(aws):
     paulo_sub = doctor_sub("39053344705")
-    mudar(aws, paulo_sub, {"roles": ["medico", "admin"]})
+    mudar(aws, paulo_sub, {"roles": ["medico", "admin"], "healthUnit": "ubs-1-asa-sul"})
     como_paulo = {"groups": "[papel:admin papel:medico]", "user": "39053344705", "sub": paulo_sub}
     assert mudar(aws, paulo_sub, {"enabled": False}, **como_paulo)["statusCode"] == 422
     assert mudar(aws, paulo_sub, {"roles": ["medico"]}, **como_paulo)["statusCode"] == 422

@@ -29,6 +29,8 @@ export default defineConfig({
           if (pkg === 'lucide-react') return 'icons'
           if (['react', 'react-dom', 'scheduler', 'react-router', 'react-router-dom', 'cookie', 'set-cookie-parser'].includes(pkg)) return 'react'
           if (pkg.startsWith('@fontsource')) return undefined
+          // leitor de QR: só baixa quando alguém abre a câmera (Localizar guia)
+          if (pkg === 'jsqr') return undefined
           return 'vendor'
         },
       },

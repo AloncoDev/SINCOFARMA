@@ -86,7 +86,7 @@ def list_units() -> list[dict]:
     delas, vale um item-índice próprio.
     """
     kwargs = {
-        "FilterExpression": Attr("SK").eq("PROFILE"),
+        "FilterExpression": Attr("SK").eq("PROFILE") & Attr("PK").begins_with("UNIT#"),
         "ProjectionExpression": "PK, #n",
         "ExpressionAttributeNames": {"#n": "name"},
     }
@@ -345,7 +345,7 @@ def update_visit(caller, visit_id: str, patch: dict) -> dict:
 ACTION_LABELS = {
     "create": "Atendimento registrado",
     "update": "Desfecho ou Red Flag alterado",
-    "referral_create": "Encaminhado a médico",
+    "referral_create": "Encaminhado à unidade de saúde",
     "referral_read": "Encaminhamento lido pelo médico",
     "referral_answered": "Médico respondeu o encaminhamento",
     "referral_declined": "Médico recusou o encaminhamento",

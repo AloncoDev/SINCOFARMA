@@ -66,6 +66,7 @@ export const referralSeeds = [
     status: "sent",
     priority: "urgente",
     doctor: 0,
+    healthUnit: 0,
     reason: "Dor torácica em aperto com PA elevada e SpO2 94%. Encaminho para avaliação médica imediata; paciente orientado a procurar a UPA se a dor piorar.",
     patient: { name: "João Carlos Pereira", cpf: "***.***.***-55", birthDate: "1961-03-14", sex: "M", phone: "61998812233" },
     clinical: {
@@ -83,6 +84,7 @@ export const referralSeeds = [
     status: "read",
     priority: "rotina",
     doctor: 1,
+    healthUnit: 2,
     reason: "Tosse persistente há 3 semanas, sem febre. Peço avaliação para investigar a causa e decidir sobre exame de imagem.",
     patient: { name: "Ana Beatriz Oliveira", cpf: "***.***.***-22", birthDate: "1988-07-02", sex: "F", phone: "61991234567" },
     clinical: {
@@ -99,6 +101,7 @@ export const referralSeeds = [
     status: "answered",
     priority: "rotina",
     doctor: 0,
+    healthUnit: 0,
     reason: "Pico hipertensivo assintomático em paciente sem acompanhamento. Solicito avaliação para início de tratamento.",
     patient: { name: "Roberto Alves Cunha", cpf: "***.***.***-46", birthDate: "1970-11-23", sex: "M", phone: "61993344556" },
     clinical: {
@@ -117,6 +120,7 @@ export const referralSeeds = [
     status: "declined",
     priority: "rotina",
     doctor: 1,
+    healthUnit: 1,
     reason: "Renovação de receita de levotiroxina, paciente sem consulta há 1 ano.",
     patient: { name: "Helena Martins Prado", cpf: "***.***.***-04", birthDate: "1955-05-09", sex: "F", phone: "61990001122" },
     clinical: {
@@ -135,6 +139,7 @@ export const referralSeeds = [
     status: "cancelled",
     priority: "rotina",
     doctor: 0,
+    healthUnit: 3,
     reason: "Entorse de tornozelo com edema. Avaliação para imobilização.",
     patient: { name: "Gustavo Henrique Prado", cpf: "***.***.***-54", birthDate: "1996-01-30", sex: "M", phone: "61995556677" },
     clinical: {
@@ -163,4 +168,13 @@ export const demoPharmacies = [
     pharmacists: { active: 1, pending: 1 }, profile: { volume: 230, history: 4, mix: [0.82, 0.09, 0.09], urgent: 0.02, minutes: 7.1 } },
   { id: "sobradinho", name: "Drogaria São Lucas — Sobradinho / RA V", monthGoal: 250, triageGoalMin: 10,
     pharmacists: { active: 0, pending: 1 }, profile: { volume: 200, history: 0, mix: [0.75, 0.15, 0.1], urgent: 0.03, minutes: 10 } },
+];
+
+// Unidades de saúde da demonstração (destino dos encaminhamentos; tela Unidades de saúde).
+export const demoHealthUnits = [
+  { id: "ubs-1-asa-sul", name: "UBS 1 Asa Sul", kind: "ubs", region: "Asa Sul / RA I", doctors: { active: 2, pending: 0 } },
+  { id: "ubs-5-taguatinga", name: "UBS 5 Taguatinga", kind: "ubs", region: "Taguatinga / RA III", doctors: { active: 1, pending: 1 } },
+  { id: "upa-ceilandia", name: "UPA Ceilândia", kind: "upa", region: "Ceilândia / RA IX", doctors: { active: 4, pending: 0 } },
+  { id: "policlinica-taguatinga", name: "Policlínica de Taguatinga", kind: "policlinica", region: "Taguatinga / RA III", doctors: { active: 3, pending: 0 } },
+  { id: "caps-ad-guara", name: "CAPS AD Guará", kind: "caps", region: "Guará / RA X", doctors: { active: 0, pending: 1 } },
 ];
