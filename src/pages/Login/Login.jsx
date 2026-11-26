@@ -80,8 +80,9 @@ export default function Login() {
   const success = status === "success";
 
   // efeito 3D + holofote seguindo o mouse (mesmo hook dos cards do painel)
-  // inclinação leve: mais que isso deforma o card em telas menores ou com zoom do Windows
-  const tilt = useSpotlightTilt(3);
+  // sem inclinação 3D: em algumas placas de vídeo (Intel antigas, drivers desatualizados) o card girado
+  // desenhava campos e avisos fora do lugar. Fica só o brilho que acompanha o mouse.
+  const tilt = useSpotlightTilt(0);
 
   /** Mostra a próxima etapa pedida pelo Cognito (podem vir várias em sequência). */
   async function enterChallenge(err) {
