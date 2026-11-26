@@ -18,7 +18,7 @@ const STATS = [
   { key: "referred", label: STATUS.referred.short, tone: "amber" },
   { key: "progress", label: STATUS.progress.short, tone: "blue" },
   { key: "urgent", label: "Red Flag", tone: "red" },
-  { key: "doctor", label: "Com médico", tone: "gray" },
+  { key: "doctor", label: "Encaminhados", tone: "gray" },
 ];
 const FILTERS = new Set(STATS.map((s) => s.key));
 
@@ -70,7 +70,7 @@ export default function Acompanhamento() {
   const shown = visits.filter(
     (v) =>
       match(v, filter) &&
-      (!q || [v.protocol, v.rt, ...v.referrals.map((r) => r.doctor)].some((t) => normalize(t || "").includes(q)))
+      (!q || [v.protocol, v.rt, ...v.referrals.flatMap((r) => [r.healthUnit, r.doctor, r.code])].some((t) => normalize(t || "").includes(q)))
   );
 
   const open = (id) => navigate(`/atendimentos/${encodeURIComponent(id)}`, { state: { back: `/atendimentos?${params}` } });
@@ -167,7 +167,7 @@ export default function Acompanhamento() {
                 <th>PROTOCOLO</th>
                 <th>SITUAÇÃO</th>
                 <th>FARMACÊUTICO(A)</th>
-                <th>MÉDICO(A) · ENCAMINHAMENTO</th>
+                <th>UNIDADE DE SAÚDE · ENCAMINHAMENTO</th>
                 <th aria-label="Abrir" />
               </tr>
             </thead>
@@ -209,12 +209,16 @@ export default function Acompanhamento() {
                     <td>
                       {ref ? (
                         <div className="track-ref">
-                          <span className="track-person track-person--md"><Stethoscope size={14} aria-hidden="true" />{ref.doctor}</span>
+                          <span className="track-person track-person--md">
+                            <Stethoscope size={14} aria-hidden="true" />
+                            {ref.healthUnit ?? ref.doctor}
+                          </span>
                           <span className={`status status--${rst.tone}`}><i />{rst.short}</span>
+                          {ref.healthUnit && ref.doctor && <small>por {ref.doctor}</small>}
                           {v.referrals.length > 1 && <small>+{v.referrals.length - 1} anterior</small>}
                         </div>
                       ) : (
-                        <span className="track-none">Sem encaminhamento a médico</span>
+                        <span className="track-none">Sem encaminhamento</span>
                       )}
                     </td>
                     <td className="ta-center"><ChevronRight size={18} className="track-go" aria-hidden="true" /></td>

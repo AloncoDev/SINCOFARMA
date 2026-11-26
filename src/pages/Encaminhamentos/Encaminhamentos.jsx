@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { TriangleAlert, SearchX, ChevronRight, Info } from "lucide-react";
+import { TriangleAlert, SearchX, ChevronRight, Info, ScanSearch } from "lucide-react";
 import SpotlightCard from "../../components/SpotlightCard";
 import { repository } from "../../data";
 import { useAuth } from "../../contexts/auth";
@@ -10,8 +10,10 @@ import { pode } from "../../services/permissoes";
 import { REFERRAL_STATUS, REFERRAL_OPEN, PRIORITIES } from "../../data/catalog";
 import { RISK } from "../Ficha/clinico";
 import { initials } from "../../utils/initials";
-import { rise } from "../../utils/motion";
+import { rise, press } from "../../utils/motion";
+import GuiaBusca from "./GuiaBusca";
 import "./Encaminhamentos.css";
+import "./Guia.css";
 
 // cartões do resumo; cada um filtra a lista
 const PICKS = [
@@ -34,11 +36,15 @@ function when(iso, now = new Date()) {
 }
 
 const matches = (r, q) =>
-  !q || [r.patientName, r.complaint, r.protocol, r.doctorName, r.fromName, r.unitName].some((f) => normalize(f ?? "").includes(q));
+  !q ||
+  [r.patientName, r.complaint, r.protocol, r.code, r.healthUnitName, r.doctorName, r.fromName, r.unitName].some((f) =>
+    normalize(f ?? "").includes(q)
+  );
 
 /**
- * Farmacêutico: encaminhamentos enviados pela farmácia (acompanha resposta, pode cancelar).
- * Médico: a caixa de entrada dele (abre, responde ou recusa). Quem vê o quê é o servidor que decide.
+ * Farmacêutico: encaminhamentos enviados pela farmácia às unidades de saúde (acompanha, imprime a guia, cancela).
+ * Médico: a caixa da unidade de saúde dele (abre, responde ou recusa). Os dois localizam uma guia pelo
+ * código, CPF ou QR code. Quem vê o quê é o servidor que decide.
  */
 export default function Encaminhamentos() {
   const { user } = useAuth();
@@ -49,6 +55,8 @@ export default function Encaminhamentos() {
   const doctorView = pode(user, "responder_encaminhamento") && !pode(user, "criar_encaminhamento");
   const filter = PICK[params.get("status")] ? params.get("status") : "open";
   const [state, setState] = useState({ status: "loading", list: [] });
+  const [finding, setFinding] = useState(false);
+  const noUnit = doctorView && !user?.healthUnit;
 
   const load = useCallback(() => {
     repository.listReferrals().then(
@@ -77,21 +85,37 @@ export default function Encaminhamentos() {
             <span>/</span>
             <span>Encaminhamentos</span>
           </motion.nav>
-          <motion.h1 {...rise(1)}>{doctorView ? "Casos encaminhados a você" : "Encaminhamentos"}</motion.h1>
+          <motion.h1 {...rise(1)}>{doctorView ? "Encaminhamentos da sua unidade" : "Encaminhamentos"}</motion.h1>
           <motion.p className="hello" {...rise(2)}>
             {doctorView
-              ? "Farmácias da rede pedem sua avaliação. Abra o caso, leia a ficha e responda com a conduta."
-              : "Casos que a farmácia enviou a médicos da rede e as respostas de cada um."}
+              ? "Farmácias da rede pedem avaliação à sua unidade de saúde. Abra o caso, leia a ficha e responda com a conduta."
+              : "Casos que a farmácia enviou às unidades de saúde, com a guia de cada um e as respostas."}
           </motion.p>
         </div>
+        <motion.div className="page-actions" {...rise(2)}>
+          <motion.button type="button" className="btn btn--primary" onClick={() => setFinding(true)} {...press}>
+            <span className="btn-shine" aria-hidden="true" />
+            <ScanSearch size={16} /> Localizar guia
+          </motion.button>
+        </motion.div>
       </section>
+
+      {noUnit && (
+        <motion.div className="data-hidden ref-warn" role="note" {...rise(3)}>
+          <TriangleAlert size={18} aria-hidden="true" />
+          <span>
+            Sua conta ainda não está ligada a uma unidade de saúde, então a caixa fica vazia. Peça ao administrador para
+            vincular você à sua UBS, UPA ou hospital. Enquanto isso, dá para localizar guias pelo código, CPF ou QR code.
+          </span>
+        </motion.div>
+      )}
 
       {!doctorView && (
         <motion.div className="data-hidden ref-note" role="note" {...rise(3)}>
           <Info size={18} aria-hidden="true" />
           <span>
-            Para encaminhar, abra o atendimento (em <b>Atendimentos</b> ou no Dashboard) e use <b>Encaminhar a médico</b>.
-            O médico recebe uma cópia da ficha naquele momento, com o CPF mascarado.
+            Para encaminhar, abra o atendimento (em <b>Atendimentos</b> ou no Dashboard) e use <b>Encaminhar à unidade de saúde</b>.
+            Sai uma guia com código e QR code para o paciente levar; a unidade recebe uma cópia da ficha, com o CPF mascarado.
           </span>
         </motion.div>
       )}
@@ -136,7 +160,7 @@ export default function Encaminhamentos() {
               <tr>
                 <th>PACIENTE / PROTOCOLO</th>
                 <th>QUEIXA &amp; RISCO</th>
-                <th>{doctorView ? "FARMÁCIA" : "MÉDICO"}</th>
+                <th>{doctorView ? "FARMÁCIA" : "UNIDADE DE SAÚDE"}</th>
                 <th>ENVIADO</th>
                 <th className="ta-right">SITUAÇÃO</th>
                 <th aria-label="Abrir" />
@@ -175,7 +199,7 @@ export default function Encaminhamentos() {
                               </>
                             )}
                           </strong>
-                          <small className="mono">{r.protocol ?? "—"}</small>
+                          <small className="mono">{r.code ?? r.protocol ?? "—"}</small>
                         </div>
                       </div>
                     </td>
@@ -195,7 +219,10 @@ export default function Encaminhamentos() {
                           <small>por {r.fromName}</small>
                         </div>
                       ) : (
-                        r.doctorName
+                        <div className="complaint">
+                          <strong>{r.healthUnitName ?? r.doctorName}</strong>
+                          {r.healthUnitName && r.doctorName && <small>respondido por {r.doctorName}</small>}
+                        </div>
                       )}
                     </td>
                     <td className="mono ref-when">{when(r.createdAt)}</td>
@@ -236,6 +263,7 @@ export default function Encaminhamentos() {
           <div className="table-more">Mostrando os 100 mais recentes.</div>
         )}
       </SpotlightCard>
+      <GuiaBusca open={finding} onClose={() => setFinding(false)} onOpen={open} />
     </main>
   );
 }

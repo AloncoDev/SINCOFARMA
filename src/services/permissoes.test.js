@@ -12,11 +12,16 @@ describe("papéis a partir dos grupos do Cognito", () => {
     expect(accessFrom(["unidade:asa-sul", "papel:farmaceutico", "papel:admin"])).toEqual({
       roles: ["farmaceutico", "admin"],
       unit: "asa-sul",
+      healthUnit: null,
     });
   });
 
+  it("médico: a unidade de saúde onde atende", () => {
+    expect(accessFrom(["papel:medico", "saude:ubs-1-asa-sul"])).toEqual({ roles: ["medico"], unit: null, healthUnit: "ubs-1-asa-sul" });
+  });
+
   it("sem grupos ou com duas unidades: sem unidade", () => {
-    expect(accessFrom(undefined)).toEqual({ roles: [], unit: null });
+    expect(accessFrom(undefined)).toEqual({ roles: [], unit: null, healthUnit: null });
     expect(accessFrom(["unidade:a", "unidade:b"]).unit).toBeNull();
   });
 });

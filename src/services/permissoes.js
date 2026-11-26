@@ -25,6 +25,12 @@ const PERMISSOES = {
   criar_encaminhamento: ["farmaceutico"],
   // responde ou recusa os que recebeu
   responder_encaminhamento: ["medico"],
+  // achar a guia pelo código, CPF ou QR code (farmácia: as dela; médico: de qualquer unidade)
+  localizar_guia: ["farmaceutico", "medico"],
+  // lista de unidades de saúde para escolher o destino do encaminhamento
+  ver_unidades_saude: ["farmaceutico", "admin"],
+  // cadastrar unidades de saúde e ajustar nome e tipo
+  gerenciar_unidades_saude: ["admin"],
   gerenciar_usuarios: ["admin"],
   // cadastrar farmácias e ajustar nome e metas
   gerenciar_farmacias: ["admin"],
@@ -65,6 +71,7 @@ const ROTAS = {
   "/nova-triagem": ["farmaceutico"],
   "/encaminhamentos": ["farmaceutico", "medico"],
   "/farmacias": ["admin"],
+  "/unidades-saude": ["admin"],
   "/relatorios": ["admin"],
   "/usuarios": ["admin"],
   "/auditoria": ["admin"],

@@ -14,7 +14,7 @@ export function IdentificacaoSection({ form, on, bad }) {
           <input inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={form.cpf}
             onChange={on.masked("cpf", "###.###.###-##")} />
         </Field>
-        <Field label="CNS / Cartão SUS">
+        <Field label="Cartão SUS (CNS) · opcional" invalid={bad("cns")} error="Complete os 15 dígitos ou deixe em branco.">
           <input inputMode="numeric" placeholder="000 0000 0000 0000" value={form.cns} onChange={on.digits("cns", 15)} />
         </Field>
         <Field label="Nome completo" invalid={bad("nome")} error="Informe nome e sobrenome.">

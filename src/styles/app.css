@@ -1508,3 +1508,10 @@ tr:hover .avatar { transform: scale(1.1); }
   .pick-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pick-stat:first-child { grid-column: 1 / -1; }
 }
+
+/* impressão (Ficha, Relatórios, Guia de encaminhamento): sem o menu, o conteúdo ocupa a folha inteira.
+   Sem isto a grade do painel mantém a coluna do menu e o conteúdo sai espremido à esquerda. */
+@media print {
+  .dash { display: block !important; }
+  .dash-main, .dash-content { width: 100% !important; max-width: none !important; margin: 0 !important; }
+}

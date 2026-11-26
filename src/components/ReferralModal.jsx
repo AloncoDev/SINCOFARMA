@@ -5,10 +5,10 @@ import { X, SquareArrowOutUpRight, AlertCircle, TriangleAlert } from "lucide-rea
 import Select from "./Select";
 import { repository } from "../data";
 import { useClinic } from "../contexts/clinic";
-import { PRIORITIES } from "../data/catalog";
+import { PRIORITIES, HEALTH_KINDS } from "../data/catalog";
 import { useFocusTrap, useModalBackdrop } from "../hooks/useFocusTrap";
 
-/** Encaminha um atendimento a um médico da rede (POST /encaminhamentos). */
+/** Encaminha um atendimento a uma unidade de saúde (POST /encaminhamentos) e gera a guia. */
 export default function ReferralModal({ visit, onClose }) {
   return (
     <AnimatePresence>
@@ -20,8 +20,8 @@ export default function ReferralModal({ visit, onClose }) {
 function ReferralDialog({ visit, onClose }) {
   const { notify } = useClinic();
   const navigate = useNavigate();
-  const [doctors, setDoctors] = useState(null); // null = carregando
-  const [form, setForm] = useState({ doctorId: "", priority: visit.urgent ? "urgente" : "rotina", reason: "" });
+  const [units, setUnits] = useState(null); // null = carregando
+  const [form, setForm] = useState({ healthUnitId: "", priority: visit.urgent ? "urgente" : "rotina", reason: "" });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const ref = useRef(null);
@@ -29,11 +29,11 @@ function ReferralDialog({ visit, onClose }) {
   useModalBackdrop(true, ".overlay, .toasts");
 
   useEffect(() => {
-    repository.listDoctors().then(
-      (list) => setDoctors(list),
+    repository.listHealthUnits().then(
+      (res) => setUnits(res.units),
       (err) => {
-        setDoctors([]);
-        notify(err.message || "Não foi possível carregar os médicos.", "error");
+        setUnits([]);
+        notify(err.message || "Não foi possível carregar as unidades de saúde.", "error");
       }
     );
   }, [notify]);
@@ -42,16 +42,17 @@ function ReferralDialog({ visit, onClose }) {
     e.preventDefault();
     const reason = form.reason.trim();
     const errs = {};
-    if (!form.doctorId) errs.doctorId = "Escolha o médico.";
+    if (!form.healthUnitId) errs.healthUnitId = "Escolha a unidade de saúde.";
     if (reason.length < 5) errs.reason = "Explique o motivo (mínimo 5 caracteres).";
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setBusy(true);
     try {
-      const created = await repository.createReferral({ visitId: visit.id, doctorId: form.doctorId, reason, priority: form.priority });
-      notify(`Encaminhado para ${created.doctor?.name ?? "o médico"}.`, "success");
+      const created = await repository.createReferral({ visitId: visit.id, healthUnitId: form.healthUnitId, reason, priority: form.priority });
+      notify(`Encaminhado para ${created.healthUnit?.name ?? "a unidade de saúde"}. Guia ${created.code} pronta para imprimir.`, "success");
       onClose();
-      navigate(`/encaminhamentos/${created.id}`);
+      // abre direto a guia para imprimir e entregar ao paciente
+      navigate(`/encaminhamentos/${created.id}/guia`);
     } catch (err) {
       setErrors(err.data?.details?.fields ?? {});
       notify(err.message || "Não foi possível encaminhar.", "error");
@@ -78,25 +79,25 @@ function ReferralDialog({ visit, onClose }) {
         <header className="modal-head">
           <span className="modal-icon"><SquareArrowOutUpRight size={18} /></span>
           <div>
-            <h2 id="ref-modal-title" tabIndex={-1}>Encaminhar a médico</h2>
+            <h2 id="ref-modal-title" tabIndex={-1}>Encaminhar à unidade de saúde</h2>
             <p>{visit.name} · {visit.complaint}</p>
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Fechar"><X size={18} /></button>
         </header>
 
         <div className="modal-body">
-          <div className={`field${errors.doctorId ? " has-error" : ""}`}>
-            <label htmlFor="ref-doctor">MÉDICO</label>
+          <div className={`field${errors.healthUnitId ? " has-error" : ""}`}>
+            <label htmlFor="ref-unit">UNIDADE DE SAÚDE</label>
             <Select
               className="sel--field"
-              id="ref-doctor"
-              value={form.doctorId}
-              onChange={(v) => setForm((f) => ({ ...f, doctorId: v }))}
-              placeholder={doctors === null ? "Carregando médicos…" : doctors.length ? "Escolha o médico" : "Nenhum médico cadastrado"}
-              disabled={!doctors?.length}
-              options={(doctors ?? []).map((d) => ({ value: d.id, label: d.name }))}
+              id="ref-unit"
+              value={form.healthUnitId}
+              onChange={(v) => setForm((f) => ({ ...f, healthUnitId: v }))}
+              placeholder={units === null ? "Carregando unidades…" : units.length ? "Escolha a UBS, UPA ou hospital" : "Nenhuma unidade cadastrada"}
+              disabled={!units?.length}
+              options={(units ?? []).map((u) => ({ value: u.id, label: `${HEALTH_KINDS[u.kind] ?? ""} · ${u.name}${u.region ? ` (${u.region})` : ""}` }))}
             />
-            {errors.doctorId && <small className="field-error"><AlertCircle size={12} /> {errors.doctorId}</small>}
+            {errors.healthUnitId && <small className="field-error"><AlertCircle size={12} /> {errors.healthUnitId}</small>}
           </div>
 
           <fieldset className="field">
@@ -137,14 +138,14 @@ function ReferralDialog({ visit, onClose }) {
           </div>
 
           <p className="ref-modal-note">
-            O médico recebe uma cópia da ficha deste atendimento (com o CPF mascarado) e responde pelo painel.
+            Gera a guia de encaminhamento (com código e QR code) para o paciente levar. Qualquer médico da unidade recebe uma cópia da ficha (CPF mascarado) e responde pelo painel.
           </p>
         </div>
 
         <footer className="modal-foot">
           <button type="button" className="btn btn--ghost" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="btn btn--primary" disabled={busy || !doctors?.length}>
-            {busy ? "Encaminhando…" : "Encaminhar"}
+          <button type="submit" className="btn btn--primary" disabled={busy || !units?.length}>
+            {busy ? "Encaminhando…" : "Encaminhar e gerar guia"}
           </button>
         </footer>
       </motion.form>

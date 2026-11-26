@@ -14,7 +14,7 @@ const DEMO_USER_KEY = "user";
 // troca o perfil no build, para os testes de ponta a ponta e capturas de tela
 const DEMO_PERFIS = {
   farmaceutico: { roles: ["farmaceutico"], unit: "demo" },
-  medico: { roles: ["medico"], unit: null },
+  medico: { roles: ["medico"], unit: null, healthUnit: "ubs-1-asa-sul" },
   admin: { roles: ["admin"], unit: null },
 };
 const DEMO_ACCESS = DEMO_PERFIS[import.meta.env.VITE_DEMO_PERFIL] ?? DEMO_PERFIS.farmaceutico;

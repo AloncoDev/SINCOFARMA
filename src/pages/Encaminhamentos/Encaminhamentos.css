@@ -1,5 +1,10 @@
 /* ---------- Encaminhamentos (lista e caso aberto) ---------- */
 .ref-note { background: #eef6f1; border-color: #c9e8d6; color: #0f5c40; }
+/* médico ainda sem unidade de saúde */
+.ref-warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+/* botões do topo do encaminhamento (guia + imprimir ficha) */
+.ref-top-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ref-top-actions a.btn { text-decoration: none; }
 
 /* lista */
 .ref-table td { vertical-align: middle; }

@@ -42,9 +42,12 @@ export function profileFrom(idToken) {
 export function accessFrom(groups) {
   const list = Array.isArray(groups) ? groups : [];
   const unidades = list.filter((g) => g.startsWith("unidade:")).map((g) => g.slice(8));
+  // médico: a unidade de saúde onde atende (recebe os encaminhamentos dela)
+  const saude = list.filter((g) => g.startsWith("saude:")).map((g) => g.slice(6));
   return {
     roles: list.filter((g) => g.startsWith("papel:")).map((g) => g.slice(6)),
     unit: unidades.length === 1 ? unidades[0] : null,
+    healthUnit: saude.length === 1 ? saude[0] : null,
   };
 }
 

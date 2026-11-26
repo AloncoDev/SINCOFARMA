@@ -24,11 +24,14 @@ tests/                         pytest com DynamoDB e Cognito simulados
 | PATCH | `/visits/{id}` | troca desfecho e/ou Red Flag, só de quem registrou (concorrência otimista + auditoria) |
 | POST | `/rnds/sync` | responde 501 até a integração com a RNDS existir |
 | GET | `/unidades` | farmácias cadastradas (`id`, `name`), só para a administração escolher no painel |
-| GET | `/medicos` | médicos ativos (`id` = sub do Cognito, `name`; sem CPF), para o farmacêutico escolher |
-| POST | `/encaminhamentos` | farmacêutico envia um atendimento da farmácia: `{ visitId, doctorId, reason, priority: rotina\|urgente }` |
-| GET | `/encaminhamentos[?status=]` | farmacêutico: os da farmácia; médico: a caixa dele (resumos, sem ficha) |
-| GET | `/encaminhamentos/{id}` | detalhe com a ficha copiada no envio; a primeira abertura pelo médico marca `read` |
-| PATCH | `/encaminhamentos/{id}` | médico: `{ status: answered\|declined, response }`; farmácia: `{ status: cancelled }` |
+| GET | `/unidades-saude` | unidades de saúde (UBS, UPA, hospital...) para o farmacêutico escolher o destino; a administração vê também quantos médicos cada uma tem |
+| POST | `/unidades-saude` | cadastra a unidade (`id` vira o grupo `saude:<id>`, que liga os médicos), nome, tipo e região, com auditoria. Admin |
+| PATCH | `/unidades-saude/{id}` | muda nome, tipo e região (o código não muda), com auditoria. Admin |
+| POST | `/encaminhamentos` | farmacêutico envia um atendimento da farmácia a uma unidade de saúde: `{ visitId, healthUnitId, reason, priority: rotina\|urgente }`; gera a guia com código `ENC-XXXX-XXXX` |
+| GET | `/encaminhamentos[?status=]` | farmacêutico: os da farmácia; médico: a caixa da unidade de saúde dele (resumos, sem ficha) |
+| GET | `/encaminhamentos/{id}` | detalhe com a ficha copiada no envio (farmácia: os dela; médico: de qualquer unidade); a primeira abertura por um médico marca `read` e registra quem leu |
+| PATCH | `/encaminhamentos/{id}` | médico ligado a uma unidade de saúde: `{ status: answered\|declined, response }` (fica registrado quem respondeu e de qual unidade); farmácia: `{ status: cancelled }` |
+| POST | `/guias/busca` | `{ code }` ou `{ cpf }` (no corpo, nunca na URL): guias de encaminhamento; médico acha de qualquer unidade, farmácia só as dela; a busca fica na auditoria, sem o CPF |
 
 | GET | `/usuarios` | administração: usuários (CPF mascarado, perfis, farmácia, situação) e farmácias |
 | POST | `/usuarios` | administração cadastra: `{ cpf, name, email, roles, unit?, crf? }`; o Cognito envia a senha temporária |

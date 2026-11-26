@@ -16,7 +16,7 @@ def test_registra_acoes_sem_dados_de_paciente(aws):
     ana = {"sub": doctor_sub("52998224725")}  # sub real do Cognito, como em produção
     visit = body_of(aws.criar_visita(event("POST", "/visits", {"clinical": copy.deepcopy(VALID_CLINICAL)}, **ana), None))
     patch(aws, visit["id"], {"status": "done"}, **ana)
-    body = {"visitId": visit["id"], "doctorId": doctor_sub("39053344705"), "reason": "Avaliar cefaleia", "priority": "rotina"}
+    body = {"visitId": visit["id"], "healthUnitId": "ubs-1-asa-sul", "reason": "Avaliar cefaleia", "priority": "rotina"}
     assert aws.criar_encaminhamento(event("POST", "/encaminhamentos", body, **ana), None)["statusCode"] == 201
 
     resp = auditoria(aws, **ADMIN)

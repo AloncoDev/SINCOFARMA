@@ -14,7 +14,7 @@ const TELAS_PC = [
 const TELAS = {
   farmaceutico: ["/dashboard", "/atendimentos", "/nova-triagem", "/encaminhamentos", "/minha-conta"],
   medico: ["/encaminhamentos", "/minha-conta"],
-  admin: ["/dashboard", "/atendimentos", "/farmacias", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/minha-conta"],
+  admin: ["/dashboard", "/atendimentos", "/farmacias", "/unidades-saude", "/relatorios", "/usuarios", "/auditoria", "/privacidade-lgpd", "/minha-conta"],
 };
 
 /** O que sai pela direita da janela fora de áreas com rolagem própria (tabelas). */

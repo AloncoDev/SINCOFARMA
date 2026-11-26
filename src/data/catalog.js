@@ -23,7 +23,17 @@ export const WEEK_NAMES = [
   "Domingo",
 ];
 
-/** Encaminhamentos a médico (backend/src/painel/comum/encaminhamentos.py). */
+/** Tipos de unidade de saúde (backend/src/painel/comum/saude.py). */
+export const HEALTH_KINDS = {
+  ubs: "UBS",
+  upa: "UPA",
+  hospital: "Hospital",
+  policlinica: "Policlínica",
+  caps: "CAPS",
+  outro: "Outro",
+};
+
+/** Encaminhamentos às unidades de saúde (backend/src/painel/comum/encaminhamentos.py). */
 export const REFERRAL_STATUS = {
   sent: { label: "Aguardando leitura", short: "Enviado", tone: "blue" },
   read: { label: "Lido pelo médico", short: "Lido", tone: "blue" },

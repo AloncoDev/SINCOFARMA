@@ -327,20 +327,104 @@ Resources:
           Properties: { ApiId: !Ref Api, Method: POST, Path: /rnds/sync }
 
   # ---------------------------------------------------------------- encaminhamentos
-  MedicosFn:
+  ListarUnidadesSaudeFn:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub "sincofarma-painel-${Stage}-medicos"
-      Handler: painel.api.listar_medicos
+      FunctionName: !Sub "sincofarma-painel-${Stage}-listar-unidades-saude"
+      Handler: painel.api.listar_unidades_saude
       Policies:
         - Statement:
             - Effect: Allow
-              Action: cognito-idp:ListUsersInGroup
+              Action: dynamodb:Scan # perfis SAUDE#
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+            - Effect: Allow
+              Action: cognito-idp:ListUsersInGroup # médicos de cada unidade (administração)
               Resource: !GetAtt UserPool.Arn
       Events:
         Get:
           Type: HttpApi
-          Properties: { ApiId: !Ref Api, Method: GET, Path: /medicos }
+          Properties: { ApiId: !Ref Api, Method: GET, Path: /unidades-saude }
+
+  CriarUnidadeSaudeFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sincofarma-painel-${Stage}-criar-unidade-saude"
+      Handler: painel.api.criar_unidade_saude
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:PutItem # perfil + registro de auditoria
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+            - Effect: Allow
+              Action: [cognito-idp:CreateGroup, cognito-idp:UpdateGroup]
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Post:
+          Type: HttpApi
+          Properties: { ApiId: !Ref Api, Method: POST, Path: /unidades-saude }
+
+  AtualizarUnidadeSaudeFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sincofarma-painel-${Stage}-atualizar-unidade-saude"
+      Handler: painel.api.atualizar_unidade_saude
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:UpdateItem, dynamodb:PutItem]
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+            - Effect: Allow
+              Action: [cognito-idp:CreateGroup, cognito-idp:UpdateGroup, cognito-idp:ListUsersInGroup]
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        Patch:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Method: PATCH
+            Path: "/unidades-saude/{id}"
+
+  LocalizarGuiaFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sincofarma-painel-${Stage}-localizar-guia"
+      Handler: painel.api.localizar_guia
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:Query, dynamodb:BatchGetItem] # código da guia, índice do paciente, encaminhamentos
+              Resource: !GetAtt TabelaClinico.Arn
+            - Effect: Allow
+              Action: dynamodb:PutItem # a busca fica no registro geral
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+      Events:
+        Post:
+          Type: HttpApi
+          Properties: { ApiId: !Ref Api, Method: POST, Path: /guias/busca }
 
   CriarEncaminhamentoFn:
     Type: AWS::Serverless::Function
@@ -350,7 +434,7 @@ Resources:
       Policies:
         - Statement:
             - Effect: Allow
-              Action: [dynamodb:GetItem, dynamodb:PutItem] # atendimento e perfil da unidade; registro de auditoria geral
+              Action: [dynamodb:GetItem, dynamodb:PutItem] # atendimento, farmácia e unidade de saúde; registro de auditoria geral
               Resource: !GetAtt TabelaPainel.Arn
             - Effect: Allow
               Action: [dynamodb:GetItem, dynamodb:PutItem] # ficha (leitura) + encaminhamento e auditoria
@@ -362,7 +446,7 @@ Resources:
                 StringEquals:
                   kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
             - Effect: Allow
-              Action: [cognito-idp:ListUsersInGroup, cognito-idp:AdminGetUser]
+              Action: cognito-idp:AdminGetUser # nome e CRF de quem envia
               Resource: !GetAtt UserPool.Arn
       Events:
         Post:
@@ -401,7 +485,7 @@ Resources:
               Action: [dynamodb:GetItem, dynamodb:UpdateItem, dynamodb:PutItem] # marca como lido + auditoria
               Resource: !GetAtt TabelaClinico.Arn
             - Effect: Allow
-              Action: dynamodb:PutItem # registro de auditoria geral
+              Action: [dynamodb:GetItem, dynamodb:PutItem] # unidade de saúde de quem age; registro de auditoria geral
               Resource: !GetAtt TabelaPainel.Arn
             - Effect: Allow
               Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
@@ -409,6 +493,9 @@ Resources:
               Condition:
                 StringEquals:
                   kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+            - Effect: Allow
+              Action: cognito-idp:ListUsers # nome do médico que leu ou respondeu
+              Resource: !GetAtt UserPool.Arn
       Events:
         Get:
           Type: HttpApi
@@ -428,7 +515,7 @@ Resources:
               Action: [dynamodb:GetItem, dynamodb:UpdateItem, dynamodb:PutItem]
               Resource: !GetAtt TabelaClinico.Arn
             - Effect: Allow
-              Action: dynamodb:PutItem # registro de auditoria geral
+              Action: [dynamodb:GetItem, dynamodb:PutItem] # unidade de saúde de quem age; registro de auditoria geral
               Resource: !GetAtt TabelaPainel.Arn
             - Effect: Allow
               Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
@@ -436,6 +523,9 @@ Resources:
               Condition:
                 StringEquals:
                   kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+            - Effect: Allow
+              Action: cognito-idp:ListUsers # nome do médico que leu ou respondeu
+              Resource: !GetAtt UserPool.Arn
       Events:
         Patch:
           Type: HttpApi
@@ -444,10 +534,25 @@ Resources:
             Method: PATCH
             Path: "/encaminhamentos/{id}"
 
-  MedicosLogs:
+  ListarUnidadesSaudeLogs:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${MedicosFn}"
+      LogGroupName: !Sub "/aws/lambda/${ListarUnidadesSaudeFn}"
+      RetentionInDays: !Ref LogRetentionDays
+  CriarUnidadeSaudeLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CriarUnidadeSaudeFn}"
+      RetentionInDays: !Ref LogRetentionDays
+  AtualizarUnidadeSaudeLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AtualizarUnidadeSaudeFn}"
+      RetentionInDays: !Ref LogRetentionDays
+  LocalizarGuiaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LocalizarGuiaFn}"
       RetentionInDays: !Ref LogRetentionDays
   CriarEncaminhamentoLogs:
     Type: AWS::Logs::LogGroup
@@ -843,10 +948,10 @@ Resources:
               Action: [dynamodb:Query, dynamodb:GetItem, dynamodb:PutItem] # atividade, pedidos, farmácia; registra a exportação
               Resource: !GetAtt TabelaPainel.Arn
             - Effect: Allow
-              Action: [dynamodb:Query] # encaminhamentos recebidos (só do próprio médico)
+              Action: [dynamodb:Query] # encaminhamentos que o próprio médico respondeu
               Resource: !GetAtt TabelaClinico.Arn
             - Effect: Allow
-              Action: [cognito-idp:AdminGetUser, cognito-idp:AdminListDevices]
+              Action: [cognito-idp:AdminGetUser, cognito-idp:AdminListDevices, cognito-idp:ListUsers] # ListUsers: nome do médico
               Resource: !GetAtt UserPool.Arn
             - Effect: Allow
               Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]

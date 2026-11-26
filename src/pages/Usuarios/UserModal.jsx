@@ -9,24 +9,24 @@ import { PAPEIS } from "../../services/permissoes";
 import { digits, isValidCpf, maskCpf } from "../../utils/cpf";
 import { useFocusTrap, useModalBackdrop } from "../../hooks/useFocusTrap";
 
-const EMPTY = { name: "", cpf: "", email: "", roles: [], unit: "", crf: "" };
+const EMPTY = { name: "", cpf: "", email: "", roles: [], unit: "", healthUnit: "", crf: "" };
 
 /** Cadastro (user = null) ou gestão de um usuário: perfis, farmácia e acesso. */
-export default function UserModal({ open, user, units, onClose, onSaved }) {
+export default function UserModal({ open, user, units, healthUnits = [], onClose, onSaved }) {
   return (
     <AnimatePresence>
       {/* a cada abertura o formulário nasce de novo, já com os dados da pessoa */}
-      {open && <UserDialog key={user?.id ?? "new"} user={user} units={units} onClose={onClose} onSaved={onSaved} />}
+      {open && <UserDialog key={user?.id ?? "new"} user={user} units={units} healthUnits={healthUnits} onClose={onClose} onSaved={onSaved} />}
     </AnimatePresence>
   );
 }
 
-function UserDialog({ user, units, onClose, onSaved }) {
+function UserDialog({ user, units, healthUnits, onClose, onSaved }) {
   const { user: me } = useAuth();
   const { notify } = useClinic();
   const creating = !user;
   const self = user && me?.sub === user.id;
-  const [form, setForm] = useState(() => (user ? { ...EMPTY, roles: user.roles, unit: user.unit ?? "" } : EMPTY));
+  const [form, setForm] = useState(() => (user ? { ...EMPTY, roles: user.roles, unit: user.unit ?? "", healthUnit: user.healthUnit ?? "" } : EMPTY));
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(null); // ação em andamento
   const [confirm, setConfirm] = useState(null); // "disable" | "mfa"
@@ -38,6 +38,7 @@ function UserDialog({ user, units, onClose, onSaved }) {
   const toggleRole = (r) =>
     setForm((f) => ({ ...f, roles: f.roles.includes(r) ? f.roles.filter((x) => x !== r) : [...f.roles, r] }));
   const isPharm = form.roles.includes("farmaceutico");
+  const isDoctor = form.roles.includes("medico");
 
   function check() {
     const e = {};
@@ -49,6 +50,7 @@ function UserDialog({ user, units, onClose, onSaved }) {
     }
     if (!form.roles.length) e.roles = "Escolha ao menos um perfil.";
     if (isPharm && !form.unit) e.unit = "Farmacêutico precisa de uma farmácia.";
+    if (isDoctor && !form.healthUnit) e.healthUnit = "Médico precisa de uma unidade de saúde.";
     if (self && !form.roles.includes("admin")) e.roles = "Você não pode tirar o próprio perfil de administração.";
     setErrors(e);
     return !Object.keys(e).length;
@@ -74,13 +76,15 @@ function UserDialog({ user, units, onClose, onSaved }) {
     e.preventDefault();
     if (!check()) return;
     if (creating) {
-      const body = { name: form.name.trim(), cpf: digits(form.cpf), email: form.email.trim(), roles: form.roles, unit: form.unit || null, crf: isPharm ? digits(form.crf) : null };
+      const body = { name: form.name.trim(), cpf: digits(form.cpf), email: form.email.trim(), roles: form.roles, unit: form.unit || null, healthUnit: isDoctor ? form.healthUnit : null, crf: isPharm ? digits(form.crf) : null };
       run("save", () => repository.createUser(body));
       return;
     }
     const change = {};
     if ([...form.roles].sort().join() !== [...user.roles].sort().join()) change.roles = form.roles;
     if ((form.unit || null) !== (user.unit ?? null)) change.unit = form.unit || null;
+    const health = isDoctor ? form.healthUnit || null : null;
+    if (health !== (user.healthUnit ?? null)) change.healthUnit = health;
     if (!Object.keys(change).length) return onClose();
     run("save", () => repository.updateUser(user.id, change), `Perfil de ${user.name.split(" ")[0]} atualizado.`);
   }
@@ -152,6 +156,17 @@ function UserDialog({ user, units, onClose, onSaved }) {
                 options={[{ value: "", label: "Nenhuma" }, ...units.map((u) => ({ value: u.id, label: u.name }))]}
               />
             </Field>
+            {isDoctor && (
+              <Field label="UNIDADE DE SAÚDE" error={errors.healthUnit}>
+                <Select
+                  className="sel--field"
+                  value={form.healthUnit}
+                  onChange={(v) => setForm((f) => ({ ...f, healthUnit: v }))}
+                  placeholder={healthUnits.length ? "Onde o médico atende" : "Cadastre em Unidades de saúde"}
+                  options={healthUnits.map((u) => ({ value: u.id, label: u.name }))}
+                />
+              </Field>
+            )}
             {creating && isPharm && (
               <Field label="CRF-DF" error={errors.crf}>
                 <input value={form.crf} onChange={set("crf")} inputMode="numeric" placeholder="Só números" />

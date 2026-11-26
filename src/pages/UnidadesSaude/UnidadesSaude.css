@@ -1,0 +1,20 @@
+/* ---------- Unidades de saúde (administração) ---------- */
+.hu-note { background: #eef4fe; border-color: #cfe0fb; color: #1d4ed8; }
+.hu-table { min-width: 720px; }
+.hu-table td { vertical-align: middle; }
+.hu-name { display: flex; align-items: center; gap: 10px; }
+.hu-name strong { display: block; font-size: 13.5px; color: var(--blue-900); }
+.hu-name small { font-size: 11.5px; color: var(--muted); }
+.hu-icon { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 9px; background: #e3edfd; color: #1d4ed8; }
+.hu-icon--upa, .hu-icon--hospital { background: #fde8e8; color: #b91c1c; }
+.hu-icon--caps { background: #f3e8ff; color: #7e22ce; }
+.hu-kind { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; background: #e3edfd; color: #1d4ed8; font-size: 11.5px; font-weight: 700; }
+.hu-kind--upa, .hu-kind--hospital { background: #fde8e8; color: #b91c1c; }
+.hu-kind--policlinica { background: #e6f8ec; color: #15803d; }
+.hu-kind--caps { background: #f3e8ff; color: #7e22ce; }
+.hu-kind--outro { background: #f1f5f9; color: #475569; }
+.hu-doctors { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; color: var(--blue-900); }
+.hu-doctors svg { color: #1d4ed8; }
+.hu-doctors small { font-weight: 500; color: var(--muted); }
+.hu-doctors.is-empty { color: #b45309; }
+.hu-warn { display: block; margin-top: 2px; font-size: 11.5px; color: #b45309; }

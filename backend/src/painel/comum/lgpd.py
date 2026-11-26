@@ -262,12 +262,22 @@ def dados_do_usuario(caller) -> dict:
     unidade = repo.unit_profile(caller.unit_id)["name"] if caller.unit_id else None
 
     recebidos = []
+    saude_nome = None
     if "medico" in caller.roles:
-        resp = _clinico().query(KeyConditionExpression=Key("PK").eq(f"MED#{caller.sub}"))
-        for r in resp.get("Items", []):
+        nome = repo.name_of_sub(caller.sub)
+        items = _clinico().query(KeyConditionExpression=Key("PK").eq(f"MED#{caller.sub}")).get("Items", [])  # antigos
+        if caller.health_unit:
+            from . import saude  # evita import circular
+
+            perfil = saude.get(caller.health_unit)
+            saude_nome = perfil["name"] if perfil else None
+            caixa = _clinico().query(KeyConditionExpression=Key("PK").eq(f"SAUDE#{caller.health_unit}#REF")).get("Items", [])
+            # da caixa da unidade, só os que este médico respondeu
+            items += [r for r in caixa if r.get("doctorName") == nome]
+        for r in items:
             # só o que é do médico: protocolo, datas e situação; o paciente não entra
-            recebidos.append({"protocolo": r.get("protocol"), "recebidoEm": r.get("createdAt"), "situacao": r.get("status"),
-                              "farmacia": r.get("unitName")})
+            recebidos.append({"protocolo": r.get("protocol"), "guia": r.get("code"), "recebidoEm": r.get("createdAt"),
+                              "situacao": r.get("status"), "farmacia": r.get("unitName")})
 
     dados = {
         "geradoEm": tempo.now().isoformat(),
@@ -280,6 +290,7 @@ def dados_do_usuario(caller) -> dict:
             "crf": attrs.get("custom:crf"),
             "perfis": [usuarios.ROLE_NAMES[r] for r in sorted(caller.roles)],
             "farmacia": unidade,
+            "unidadeDeSaude": saude_nome,
             "criadaEm": _iso(criado),
             "situacao": user.get("UserStatus"),
             "ativa": user.get("Enabled", True),
@@ -352,7 +363,9 @@ def dados_do_paciente(caller, cpf: str) -> dict:
                 "enviadoEm": ref.get("createdAt"),
                 "farmacia": ref.get("unitName"),
                 # compartilhamento (art. 18, VII): com quem o dado foi compartilhado
-                "medico": ref.get("doctor", {}).get("name"),
+                "codigoGuia": ref.get("code"),
+                "unidadeDeSaude": (ref.get("healthUnit") or {}).get("name"),
+                "medico": (ref.get("doctor") or {}).get("name"),
                 "prioridade": ref.get("priority"),
                 "motivo": ref.get("reason"),
                 "situacao": ref.get("status"),

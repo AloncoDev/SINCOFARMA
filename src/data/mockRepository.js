@@ -1,9 +1,10 @@
 // Repositório simulado: mesma interface do apiRepository, dados no localStorage.
 // Usado quando VITE_API_URL não está definida.
-import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts, referralSeeds, demoPharmacies } from "./mockData";
+import { seedVisits, rndsQueue, baseline, weekBase, historicAverage, unit, archivePool, archiveRts, referralSeeds, demoPharmacies, demoHealthUnits } from "./mockData";
 import { isVisit, countBy } from "./stats";
 import { timeLabel, dayKey, fromDayKey } from "../utils/dates";
 import { seeded, buildReport, pharmacyDays, sumCounts } from "./mockReport";
+import { CODE_ALPHABET, normalizeCode } from "../utils/guia";
 import { trackDay, trackVisit } from "./mockAcompanhamento";
 
 const KEY = "sinco:clinic";
@@ -15,14 +16,15 @@ const DEMO_DOCTORS = [
   { id: "demo-medico-1", name: "Dr. Paulo Lima" },
   { id: "demo-medico-2", name: "Dra. Carla Nunes" },
 ];
-let referrals = seedReferrals();
+// unidades de saúde criadas ou editadas na demonstração (em memória)
+let healthUnits = demoHealthUnits.map((u) => ({ ...u }));
 // farmácias criadas ou editadas na demonstração (em memória)
 let pharmacies = demoPharmacies.map((p) => ({ ...p }));
 // pedidos de privacidade (LGPD) da demonstração
 let privacyRequests = [];
 let demoUsers = [
   { id: "demo-1", name: "Dra. Ana Souza", email: "ana@exemplo.com.br", cpf: "***.982.247-**", crf: "4192", roles: ["farmaceutico"], unit: "demo", enabled: true, pending: false },
-  { id: "demo-2", name: "Dr. Paulo Lima", email: "paulo@exemplo.com.br", cpf: "***.533.447-**", crf: null, roles: ["medico"], unit: null, enabled: true, pending: true },
+  { id: "demo-2", name: "Dr. Paulo Lima", email: "paulo@exemplo.com.br", cpf: "***.533.447-**", crf: null, roles: ["medico"], unit: null, healthUnit: "ubs-1-asa-sul", enabled: true, pending: true },
   { id: "demo-3", name: "Gestor Sincofarma", email: "gestor@exemplo.com.br", cpf: "***.444.777-**", crf: null, roles: ["admin"], unit: null, enabled: true, pending: false },
 ];
 const referralSummary = (r) => ({
@@ -39,8 +41,30 @@ const referralSummary = (r) => ({
   unit: r.unit,
   unitName: r.unitName,
   fromName: r.from.name,
-  doctorName: r.doctor.name,
+  code: r.code,
+  healthUnitId: r.healthUnit?.id ?? null,
+  healthUnitName: r.healthUnit?.name ?? r.doctor?.name,
+  doctorName: r.doctor?.name ?? null,
 });
+
+/** Código da guia na demonstração: ENC-XXXX-XXXX, sempre igual para a mesma semente. */
+function demoCode(seed) {
+  const rand = seeded(`guia:${seed}`);
+  const raw = Array.from({ length: 8 }, () => CODE_ALPHABET[Math.floor(rand() * CODE_ALPHABET.length)]).join("");
+  return `ENC-${raw.slice(0, 4)}-${raw.slice(4)}`;
+}
+
+// depois do código da guia (seedReferrals usa demoCode)
+let referrals = seedReferrals();
+
+/** Quem está usando a demonstração (o médico da demo atende na UBS 1 Asa Sul). */
+function viewer() {
+  try {
+    return JSON.parse(localStorage.getItem("user")) ?? {};
+  } catch {
+    return {};
+  }
+}
 
 /** Encaminhamentos de demonstração, com datas relativas a agora. */
 function seedReferrals() {
@@ -50,8 +74,12 @@ function seedReferrals() {
     const createdAt = iso(r.hoursAgo);
     const answeredAt = r.answeredAfter ? iso(r.hoursAgo - r.answeredAfter) : null;
     const statusAt = answeredAt ?? (r.status === "sent" ? createdAt : iso(r.hoursAgo - 1));
+    const health = healthUnits[r.healthUnit] ?? healthUnits[0];
+    const answered = ["answered", "declined"].includes(r.status);
+    const who = DEMO_DOCTORS[r.doctor];
     return {
       id: `ref-demo-${i + 1}`,
+      code: demoCode(`ref-demo-${i + 1}`),
       // os dois primeiros são atendimentos de hoje da demonstração; os outros, sem ficha para abrir
       visitId: r.visitId ?? null,
       protocol: `DF-2026-${String(4180 + i).padStart(6, "0")}`,
@@ -64,7 +92,11 @@ function seedReferrals() {
       urgent: r.priority === "urgente" || r.clinical.redFlags.length > 0,
       reason: r.reason,
       from: { name: "Dra. Ana Souza", crf: "4192" },
-      doctor: DEMO_DOCTORS[r.doctor],
+      healthUnit: { id: health.id, name: health.name, kind: health.kind },
+      // quem leu e quem respondeu (médicos da unidade)
+      readBy: r.status === "sent" || r.status === "cancelled" ? null : { name: who.name, unit: health.name },
+      doctor: answered ? who : null,
+      answeredUnit: answered ? health.name : null,
       patient: r.patient,
       clinical: r.clinical,
       response: r.response ?? null,
@@ -248,14 +280,50 @@ export const mockRepository = {
   },
 
   /* ---------- encaminhamentos (em memória; some ao recarregar) ---------- */
-  async listDoctors() {
-    await wait(LATENCY / 2);
-    return DEMO_DOCTORS;
-  },
-
   async listReferrals(status) {
     await wait(LATENCY / 2);
-    return referrals.filter((r) => !status || r.status === status).map(referralSummary);
+    // médico: a caixa da unidade de saúde dele; farmácia: todos os da demo
+    const mine = viewer().healthUnit;
+    return referrals
+      .filter((r) => !mine || r.healthUnit?.id === mine)
+      .filter((r) => !status || r.status === status)
+      .map(referralSummary);
+  },
+
+  /** Guia pelo código ou pelo CPF. A demonstração só guarda CPFs mascarados: compara os 2 últimos dígitos. */
+  async findGuides({ code, cpf } = {}) {
+    await wait(LATENCY / 2);
+    if (code) {
+      const norm = normalizeCode(code);
+      if (!norm) throw Object.assign(new Error("Código da guia inválido."), { data: { details: { fields: { code: "Use o código impresso na guia (ex.: ENC-7K3Q-9M2X)." } } } });
+      return referrals.filter((r) => r.code === norm).map(referralSummary);
+    }
+    const digits = String(cpf ?? "").replace(/\D/g, "");
+    if (digits.length !== 11) throw Object.assign(new Error("CPF inválido."), { data: { details: { fields: { cpf: "Confira os 11 dígitos." } } } });
+    return referrals.filter((r) => String(r.patient?.cpf ?? "").replace(/\D/g, "").slice(-2) === digits.slice(-2)).map(referralSummary);
+  },
+
+  /* ---------- unidades de saúde (em memória) ---------- */
+  async listHealthUnits() {
+    await wait(LATENCY / 2);
+    return { units: [...healthUnits].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")) };
+  },
+
+  async createHealthUnit({ id, name, kind, region = "" }) {
+    await wait(LATENCY);
+    if (healthUnits.some((u) => u.id === id)) {
+      throw Object.assign(new Error("Já existe uma unidade de saúde com este código."), { data: { details: { fields: { id: "Código em uso." } } } });
+    }
+    const created = { id, name, kind, region, doctors: { active: 0, pending: 0 } };
+    healthUnits = [...healthUnits, created];
+    return created;
+  },
+
+  async updateHealthUnit(id, change) {
+    await wait(LATENCY / 2);
+    if (!healthUnits.some((u) => u.id === id)) throw new Error("Unidade de saúde não encontrada.");
+    healthUnits = healthUnits.map((u) => (u.id === id ? { ...u, ...change } : u));
+    return healthUnits.find((u) => u.id === id);
   },
 
   async getReferral(id) {
@@ -265,17 +333,20 @@ export const mockRepository = {
     return found;
   },
 
-  async createReferral({ visitId, doctorId, reason, priority = "rotina" }) {
+  async createReferral({ visitId, healthUnitId, reason, priority = "rotina" }) {
     await wait(LATENCY);
     const old = archiveDay(visitId);
     const visit = current().visits.find((v) => v.id === visitId) ?? (old ? archiveFor(old) : []).find((v) => v.id === visitId);
-    const doctor = DEMO_DOCTORS.find((d) => d.id === doctorId);
-    if (!visit || !doctor) throw new Error("Atendimento ou médico não encontrado.");
+    const health = healthUnits.find((u) => u.id === healthUnitId);
+    if (!visit || !health) throw new Error("Atendimento ou unidade de saúde não encontrado.");
     const now = new Date().toISOString();
+    const id = `ref${Date.now()}`;
     const ref = {
-      id: `ref${Date.now()}`,
+      id,
+      code: demoCode(id),
       visitId,
-      protocol: visit.protocol,
+      // atendimentos de exemplo não têm protocolo: o mesmo que o acompanhamento da administração mostra
+      protocol: visit.protocol ?? `SIN-${now.slice(0, 4)}-${String(4100 + Number(String(visitId).replace(/\D/g, "") || 0)).padStart(6, "0")}`,
       unit: "demo",
       unitName: unit,
       createdAt: now,
@@ -285,7 +356,10 @@ export const mockRepository = {
       urgent: priority === "urgente" || !!visit.urgent,
       reason,
       from: { name: "Dra. Ana Souza", crf: "4192" },
-      doctor,
+      healthUnit: { id: health.id, name: health.name, kind: health.kind },
+      readBy: null,
+      doctor: null,
+      answeredUnit: null,
       // a demonstração não guarda a ficha completa: só o resumo do atendimento
       patient: { name: visit.name, cpf: visit.cpf },
       clinical: { complaint: { text: visit.complaint }, risk: visit.risk, redFlags: visit.redFlags ?? [], notes: visit.signs },
@@ -303,7 +377,9 @@ export const mockRepository = {
     if (!found) throw new Error("Encaminhamento não encontrado.");
     if (!["sent", "read"].includes(found.status)) throw new Error("Este encaminhamento já foi encerrado.");
     const now = new Date().toISOString();
-    const updated = { ...found, status, statusAt: now, ...(response ? { response, answeredAt: now } : {}) };
+    // resposta do médico da demonstração (Dr. Paulo Lima, UBS 1 Asa Sul)
+    const answer = response ? { response, answeredAt: now, doctor: DEMO_DOCTORS[0], answeredUnit: healthUnits.find((u) => u.id === viewer().healthUnit)?.name ?? null } : {};
+    const updated = { ...found, status, statusAt: now, ...answer };
     referrals = referrals.map((r) => (r.id === id ? updated : r));
     return updated;
   },
@@ -403,10 +479,10 @@ export const mockRepository = {
     return { users: demoUsers, units: [{ id: "demo", name: unit }] };
   },
 
-  async createUser({ cpf, name, email, roles, unit: unitId = null, crf = null }) {
+  async createUser({ cpf, name, email, roles, unit: unitId = null, healthUnit = null, crf = null }) {
     await wait(LATENCY);
     const masked = `***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-**`;
-    const user = { id: `demo-${Date.now()}`, name, email, cpf: masked, crf, roles, unit: unitId, enabled: true, pending: true };
+    const user = { id: `demo-${Date.now()}`, name, email, cpf: masked, crf, roles, unit: unitId, healthUnit, enabled: true, pending: true };
     demoUsers = [...demoUsers, user].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     return user;
   },
@@ -414,7 +490,7 @@ export const mockRepository = {
   async updateUser(id, change) {
     await wait(LATENCY / 2);
     // reset do MFA e reenvio do convite não têm efeito na demonstração
-    const patch = Object.fromEntries(Object.entries(change).filter(([k]) => ["roles", "unit", "enabled"].includes(k)));
+    const patch = Object.fromEntries(Object.entries(change).filter(([k]) => ["roles", "unit", "healthUnit", "enabled"].includes(k)));
     const found = demoUsers.find((u) => u.id === id);
     if (!found) throw new Error("Usuário não encontrado.");
     const updated = { ...found, ...patch };

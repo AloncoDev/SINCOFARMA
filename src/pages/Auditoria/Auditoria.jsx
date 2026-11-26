@@ -13,7 +13,11 @@ import "./Auditoria.css";
 const ACTIONS = {
   visit_create: { label: "Registrou atendimento", group: "atendimentos" },
   visit_update: { label: "Alterou desfecho / Red Flag", group: "atendimentos" },
-  referral_create: { label: "Encaminhou a médico", group: "encaminhamentos" },
+  referral_create: { label: "Encaminhou à unidade de saúde", group: "encaminhamentos" },
+  referral_search: { label: "Buscou guia de encaminhamento", group: "encaminhamentos" },
+  referral_open: { label: "Abriu guia de outra unidade", group: "encaminhamentos" },
+  health_create: { label: "Cadastrou unidade de saúde", group: "usuarios" },
+  health_update: { label: "Alterou unidade de saúde", group: "usuarios" },
   referral_read: { label: "Leu encaminhamento", group: "encaminhamentos" },
   referral_answered: { label: "Respondeu encaminhamento", group: "encaminhamentos" },
   referral_declined: { label: "Recusou encaminhamento", group: "encaminhamentos" },

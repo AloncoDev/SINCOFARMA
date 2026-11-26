@@ -2,7 +2,7 @@
 import { HAS_API } from "../data";
 
 /** Rotas com página funcional. As demais aparecem no menu com o selo "em breve". */
-export const ROUTES_READY = new Set(["/dashboard", "/atendimentos", "/encaminhamentos", "/farmacias", "/relatorios", "/nova-triagem", "/usuarios", "/minha-conta", "/auditoria", "/privacidade-lgpd"]);
+export const ROUTES_READY = new Set(["/dashboard", "/atendimentos", "/encaminhamentos", "/farmacias", "/unidades-saude", "/relatorios", "/nova-triagem", "/usuarios", "/minha-conta", "/auditoria", "/privacidade-lgpd"]);
 export const isReady = (path) => ROUTES_READY.has(path);
 
 /**
@@ -24,7 +24,7 @@ export const PRIVACIDADE = {
     nome: import.meta.env.VITE_DPO_NOME || null,
     email: import.meta.env.VITE_DPO_EMAIL || null,
   },
-  atualizadaEm: "2026-10-29",
+  atualizadaEm: "2026-11-26",
 };
 
 /** Termos de uso do painel. Mudou o texto? Atualize a data. */

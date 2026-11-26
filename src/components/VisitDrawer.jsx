@@ -95,7 +95,7 @@ export default function VisitDrawer() {
                           closeVisit();
                         }}
                       >
-                        <SquareArrowOutUpRight size={16} /> Encaminhar a médico
+                        <SquareArrowOutUpRight size={16} /> Encaminhar à unidade de saúde
                       </button>
                     )}
                   </div>

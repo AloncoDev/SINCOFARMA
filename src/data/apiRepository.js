@@ -10,8 +10,11 @@
 //   GET   /visits/:id           -> { visit, record (ficha clínica), history } (farmácia do atendimento)
 //   POST  /rnds/sync            -> { imported, lastSync, rndsPending }
 // Encaminhamentos (detalhes e permissões em backend/README.md):
-//   GET   /medicos                     -> { doctors: [{ id, name }] }           (farmacêutico)
-//   POST  /encaminhamentos             { visitId, doctorId, reason, priority } -> encaminhamento
+//   GET   /unidades-saude              -> { units: [{ id, name, kind, region, doctors? }] } (farmacêutico; admin vê médicos)
+//   POST  /unidades-saude              { id, name, kind, region } -> unidade      (administração)
+//   PATCH /unidades-saude/:id          { name?, kind?, region? } -> unidade      (administração)
+//   POST  /encaminhamentos             { visitId, healthUnitId, reason, priority } -> encaminhamento (com `code` da guia)
+//   POST  /guias/busca                 { code } ou { cpf } -> { referrals: [resumo] } (farmácia: as dela; médico: todas)
 //   GET   /encaminhamentos[?status=]   -> { referrals: [resumo] }               (farmácia ou caixa do médico)
 //   GET   /encaminhamentos/:id         -> encaminhamento com a ficha (médico abrindo: vira "read")
 //   PATCH /encaminhamentos/:id         { status: answered|declined|cancelled, response? } -> encaminhamento
@@ -51,7 +54,11 @@ export const apiRepository = {
   createVisit: (summary, clinical) => api("/visits", { method: "POST", body: JSON.stringify({ ...summary, clinical }) }),
   updateVisit: (id, patch) => api(`/visits/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) }),
   syncRnds: () => api("/rnds/sync", { method: "POST" }),
-  listDoctors: () => api("/medicos").then((r) => r.doctors),
+  listHealthUnits: () => api("/unidades-saude"),
+  createHealthUnit: (data) => api("/unidades-saude", { method: "POST", body: JSON.stringify(data) }),
+  updateHealthUnit: (id, change) => api(`/unidades-saude/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(change) }),
+  // o CPF vai no corpo, nunca na URL
+  findGuides: (query) => api("/guias/busca", { method: "POST", body: JSON.stringify(query) }).then((r) => r.referrals),
   listReferrals: (status) => api(status ? `/encaminhamentos?status=${encodeURIComponent(status)}` : "/encaminhamentos").then((r) => r.referrals),
   getReferral: (id) => api(`/encaminhamentos/${encodeURIComponent(id)}`),
   createReferral: (data) => api("/encaminhamentos", { method: "POST", body: JSON.stringify(data) }),

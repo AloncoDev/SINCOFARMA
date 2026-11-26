@@ -8,7 +8,7 @@ import os
 
 from . import auditoria
 from . import repositorio as repo
-from .auth import ROLE_PREFIX, UNIT_PREFIX
+from .auth import HEALTH_PREFIX, ROLE_PREFIX, UNIT_PREFIX
 from .http import HttpError
 
 ROLE_NAMES = {"farmaceutico": "Farmacêutico", "medico": "Médico", "admin": "Administrador Sincofarma"}
@@ -50,6 +50,7 @@ def _memberships() -> dict[str, list[str]]:
 def _public(user: dict, groups: list[str]) -> dict:
     a = _attrs(user)
     units = [g[len(UNIT_PREFIX):] for g in groups if g.startswith(UNIT_PREFIX)]
+    health = [g[len(HEALTH_PREFIX):] for g in groups if g.startswith(HEALTH_PREFIX)]
     return {
         "id": a.get("sub"),
         "name": a.get("name") or "(sem nome)",
@@ -58,6 +59,8 @@ def _public(user: dict, groups: list[str]) -> dict:
         "crf": a.get("custom:crf"),
         "roles": sorted(g[len(ROLE_PREFIX):] for g in groups if g.startswith(ROLE_PREFIX)),
         "unit": units[0] if len(units) == 1 else None,
+        # médico: a unidade de saúde onde atende
+        "healthUnit": health[0] if len(health) == 1 else None,
         "enabled": user.get("Enabled", True),
         # FORCE_CHANGE_PASSWORD = ainda não fez o primeiro acesso
         "pending": user.get("UserStatus") == "FORCE_CHANGE_PASSWORD",
@@ -101,9 +104,20 @@ def _check_unit(unit: str) -> None:
     _ensure_group(f"{UNIT_PREFIX}{unit}", profile["name"])
 
 
+def _check_health(unit: str) -> None:
+    from . import saude  # evita import circular
+
+    profile = saude.get(unit)
+    if not profile:
+        raise HttpError(422, "Unidade de saúde não encontrada.", {"fields": {"healthUnit": "Escolha uma unidade cadastrada."}})
+    _ensure_group(f"{HEALTH_PREFIX}{unit}", profile["name"])
+
+
 def create(caller, data: dict) -> dict:
     if data["unit"]:
         _check_unit(data["unit"])
+    if data.get("healthUnit"):
+        _check_health(data["healthUnit"])
     attrs = [
         {"Name": "name", "Value": data["name"]},
         {"Name": "email", "Value": data["email"]},
@@ -125,6 +139,8 @@ def create(caller, data: dict) -> dict:
         groups.append(f"{ROLE_PREFIX}{role}")
     if data["unit"]:
         groups.append(f"{UNIT_PREFIX}{data['unit']}")
+    if data.get("healthUnit"):
+        groups.append(f"{HEALTH_PREFIX}{data['healthUnit']}")
     for g in groups:
         repo._cognito.admin_add_user_to_group(UserPoolId=_pool(), Username=data["cpf"], GroupName=g)
     public = _public(user, groups)
@@ -147,6 +163,12 @@ def update(caller, sub: str, data: dict) -> dict:
     final_unit = data["unit"] if "unit" in data else next((g[len(UNIT_PREFIX):] for g in groups if g.startswith(UNIT_PREFIX)), None)
     if "farmaceutico" in final_roles and not final_unit:
         raise HttpError(422, "Farmacêutico precisa de uma farmácia.", {"fields": {"unit": "Obrigatória para farmacêutico."}})
+    final_health = (
+        data["healthUnit"] if "healthUnit" in data else next((g[len(HEALTH_PREFIX):] for g in groups if g.startswith(HEALTH_PREFIX)), None)
+    )
+    # só cobra quando o perfil ou a unidade mudam (médicos antigos, sem unidade, ainda podem ter o MFA resetado etc.)
+    if "medico" in final_roles and not final_health and ("roles" in data or "healthUnit" in data):
+        raise HttpError(422, "Médico precisa de uma unidade de saúde.", {"fields": {"healthUnit": "Obrigatória para médico."}})
     if "farmaceutico" in final_roles and not _attrs(user).get("custom:crf"):
         raise HttpError(422, "Este usuário não tem CRF cadastrado; não pode ser farmacêutico.", {"fields": {"roles": "Sem CRF."}})
 
@@ -169,7 +191,16 @@ def update(caller, sub: str, data: dict) -> dict:
         if final_unit and f"{UNIT_PREFIX}{final_unit}" not in groups:
             idp.admin_add_user_to_group(UserPoolId=_pool(), Username=username, GroupName=f"{UNIT_PREFIX}{final_unit}")
         changes["unit"] = final_unit
-    sign_out = bool(changes)  # perfil ou farmácia mudou: o próximo token já vem certo
+    if "healthUnit" in data:
+        if final_health:
+            _check_health(final_health)
+        for g in groups:
+            if g.startswith(HEALTH_PREFIX) and g != f"{HEALTH_PREFIX}{final_health}":
+                idp.admin_remove_user_from_group(UserPoolId=_pool(), Username=username, GroupName=g)
+        if final_health and f"{HEALTH_PREFIX}{final_health}" not in groups:
+            idp.admin_add_user_to_group(UserPoolId=_pool(), Username=username, GroupName=f"{HEALTH_PREFIX}{final_health}")
+        changes["healthUnit"] = final_health
+    sign_out = bool(changes)  # perfil ou unidade mudou: o próximo token já vem certo
     if data.get("enabled") is False:
         idp.admin_disable_user(UserPoolId=_pool(), Username=username)
         changes["enabled"], sign_out = False, True

@@ -93,3 +93,6 @@
   .access-action { grid-column: 1 / -1; justify-content: stretch; }
   .access-action .btn, .confirm-pair { flex: 1; }
 }
+
+/* médico ainda sem unidade de saúde: não recebe encaminhamentos */
+.user-nounit { font-size: 12.5px; font-weight: 600; color: #b45309; }

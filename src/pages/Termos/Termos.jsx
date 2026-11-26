@@ -41,7 +41,7 @@ export default function Termos() {
       <PolicySection id="painel" icon={Building2} title="O que é o painel" hint="Quem oferece e para quê." index={4}>
         <p>
           O Painel Clínico é oferecido pelo <b>{PRIVACIDADE.controlador}</b> às farmácias associadas, para registrar o
-          atendimento farmacêutico, fazer a triagem com classificação de risco e encaminhar casos a médicos.
+          atendimento farmacêutico, fazer a triagem com classificação de risco e encaminhar casos às unidades de saúde da rede pública, com guia de encaminhamento.
         </p>
         <p className="policy-note">
           <Info size={15} aria-hidden="true" /> O painel apoia a decisão do profissional de saúde; não a substitui nem
