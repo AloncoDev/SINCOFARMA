@@ -275,7 +275,8 @@
 .ref-modal-note { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
 .field .ref-consent, .ref-consent { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45; font-weight: 500; letter-spacing: 0; text-transform: none; color: inherit; cursor: pointer; }
 .ref-consent input { flex: none; width: 18px; height: 18px; margin-top: 1px; accent-color: var(--blue-700); }
-.drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+/* um embaixo do outro: lado a lado, "Encaminhar à unidade de saúde" não cabe no painel */
+.drawer-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 .drawer-actions .drawer-ficha { margin-bottom: 0; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; }
 .status-dot--green { background: #22c55e; }
@@ -351,6 +352,8 @@
   overflow-y: auto;
   display: grid;
   align-content: start;
+  /* minmax(0, 1fr): nada dentro do painel pode alargá-lo além da tela */
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   padding: 20px;
 }
@@ -358,10 +361,11 @@
 
 .meta-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 .meta-grid div {
+  min-width: 0;
   padding: 10px;
   border-radius: 8px;
   background: var(--soft);
@@ -376,7 +380,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.meta-grid dd { margin-top: 4px; font-size: 13px; font-weight: 500; }
+.meta-grid dd { margin-top: 4px; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
 
 .complaint-box {
   display: grid;
@@ -760,4 +764,4 @@ button.legend-link:focus-visible { outline: 2px solid var(--blue-500); outline-o
 }
 
 /* atalho do painel lateral para a ficha completa */
-.drawer-ficha { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; margin-bottom: 14px; text-decoration: none; }
+.drawer-ficha { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-width: 0; text-decoration: none; }
