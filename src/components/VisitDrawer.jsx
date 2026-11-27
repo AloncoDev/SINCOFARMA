@@ -107,7 +107,7 @@ export default function VisitDrawer() {
                     <dd className="mono">{visit.time}</dd>
                   </div>
                   <div>
-                    <dt><UserRound size={14} /> RT responsável</dt>
+                    <dt><UserRound size={14} /> Farmacêutico(a)</dt>
                     <dd>{visit.rt}</dd>
                   </div>
                   <div>
