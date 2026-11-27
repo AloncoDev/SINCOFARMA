@@ -76,14 +76,16 @@ def test_linha_do_tempo_com_quem_fez_o_que(aws):
     data = body_of(detalhe(aws, visit["id"]))
     assert data["unit"] == "asa-sul" and data["visit"]["status"] == "done"
     passos = [(t["action"], t["actor"], t["role"]) for t in data["timeline"]]
-    assert passos == [
-        ("create", "Dra. Ana Souza", "farmaceutico"),
-        ("referral_create", "Dra. Ana Souza", "farmaceutico"),
+    # o encaminhamento e a mudança do desfecho para "encaminhado" vão na mesma transação:
+    # podem ter o mesmo horário (relógio do Windows), então a ordem entre os dois não importa
+    assert passos[0] == ("create", "Dra. Ana Souza", "farmaceutico")
+    assert sorted(passos[1:3]) == [("referral_create", "Dra. Ana Souza", "farmaceutico"), ("update", "Dra. Ana Souza", "farmaceutico")]
+    assert passos[3:] == [
         ("referral_read", "Dr. Paulo Lima", "medico"),
         ("referral_answered", "Dr. Paulo Lima", "medico"),
         ("update", "Dra. Ana Souza", "farmaceutico"),
     ]
-    assert data["timeline"][1]["destination"] == "UBS 1 Asa Sul"
+    assert next(t for t in data["timeline"] if t["action"] == "referral_create")["destination"] == "UBS 1 Asa Sul"
     assert data["referrals"][0]["status"] == "answered"
     _sem_paciente(data)
 

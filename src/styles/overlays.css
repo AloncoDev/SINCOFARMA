@@ -273,6 +273,8 @@
 .ref-priority { grid-template-columns: 1fr 1fr; }
 .ref-priority .seg { text-align: center; }
 .ref-modal-note { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.field .ref-consent, .ref-consent { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45; font-weight: 500; letter-spacing: 0; text-transform: none; color: inherit; cursor: pointer; }
+.ref-consent input { flex: none; width: 18px; height: 18px; margin-top: 1px; accent-color: var(--blue-700); }
 .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
 .drawer-actions .drawer-ficha { margin-bottom: 0; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; }
@@ -592,16 +594,6 @@
 }
 
 /* ---------- itens ainda em construção ---------- */
-.sb-soon {
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
 .link-btn { border: 0; background: transparent; padding: 0; font: inherit; cursor: pointer; }
 .link-arrow .rot-down { transform: rotate(90deg); }
 .link-arrow .rot-up { transform: rotate(-90deg); }
@@ -649,6 +641,17 @@ button.legend-link:focus-visible { outline: 2px solid var(--blue-500); outline-o
 .idle-modal p { font-size: 14px; line-height: 1.55; color: var(--muted); margin-bottom: 20px; }
 .idle-count { color: var(--blue-900); font-variant-numeric: tabular-nums; }
 .idle-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+/* ---------- aceite dos termos de uso ---------- */
+.terms-overlay { z-index: 85; }
+.terms-gate { width: min(480px, 100%); padding: 28px 28px 24px; text-align: center; }
+.terms-gate .idle-icon { background: #e0f2fe; color: var(--blue-700); }
+.terms-gate h2 { font-size: 20px; color: var(--blue-900); margin-bottom: 8px; outline: none; }
+.terms-gate > p { font-size: 14px; line-height: 1.55; color: var(--muted); margin-bottom: 14px; }
+.terms-links { display: flex; justify-content: center; gap: 8px 18px; flex-wrap: wrap; margin-bottom: 16px; font-size: 13.5px; font-weight: 600; }
+.terms-links a { display: inline-flex; align-items: center; gap: 6px; color: var(--blue-700); }
+.terms-check { margin-bottom: 18px; text-align: left; }
+.terms-gate .lgpd-error { justify-content: center; margin: -6px 0 12px; font-size: 13px; color: #b91c1c; }
 
 /* atendimento de outro farmacêutico: só leitura */
 .drawer-readonly {

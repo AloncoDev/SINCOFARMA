@@ -26,7 +26,7 @@ export async function login(identifier, password) {
   }
   await new Promise((r) => setTimeout(r, 600));
   if (password !== DEMO_PASSWORD) throw new Error("Credenciais inválidas.");
-  const user = { name: "Dra. Ana Souza", crf: "CRF-DF 4192 · RT", onDuty: true, ...DEMO_ACCESS };
+  const user = { name: "Dra. Ana Souza", crf: "CRF-DF 4192", onDuty: true, ...DEMO_ACCESS };
   localStorage.setItem(DEMO_USER_KEY, JSON.stringify(user));
   localStorage.setItem("token", "demo");
   return user;

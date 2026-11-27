@@ -99,6 +99,49 @@ async function hmacSha256(key, data) {
 }
 
 /**
+ * Login por senha com SRP (USER_SRP_AUTH + PASSWORD_VERIFIER): a senha nunca sai do navegador,
+ * vai só a prova matemática de que a pessoa a conhece. `deviceKey`: aparelho lembrado (o Cognito
+ * responde em seguida com DEVICE_SRP_AUTH). Devolve a resposta final do Cognito.
+ */
+export async function passwordSrp(call, { clientId, poolName, username, password, deviceKey }) {
+  const helper = new AuthenticationHelper(poolName);
+  const A = await callbackToPromise((cb) => helper.getLargeAValue(cb));
+  const extra = deviceKey ? { DEVICE_KEY: deviceKey } : {};
+  const start = await call("InitiateAuth", {
+    AuthFlow: "USER_SRP_AUTH",
+    ClientId: clientId,
+    AuthParameters: { USERNAME: username, SRP_A: A.toString(16), ...extra },
+  });
+  if (start.ChallengeName !== "PASSWORD_VERIFIER") return start;
+  const p = start.ChallengeParameters;
+  // o login pode ser pelo alias do CRF: a prova usa o nome interno do usuário
+  const userId = p.USER_ID_FOR_SRP || username;
+  const hkdf = await callbackToPromise((cb) =>
+    helper.getPasswordAuthenticationKey(userId, password, new BigInteger(p.SRP_B, 16), new BigInteger(p.SALT, 16), cb)
+  );
+  const timestamp = new DateHelper().getNowString();
+  const message = Buffer.concat([
+    Buffer.from(poolName, "utf8"),
+    Buffer.from(userId, "utf8"),
+    Buffer.from(p.SECRET_BLOCK, "base64"),
+    Buffer.from(timestamp, "utf8"),
+  ]);
+  const signature = Buffer.from(await hmacSha256(new Uint8Array(hkdf), message)).toString("base64");
+  return call("RespondToAuthChallenge", {
+    ClientId: clientId,
+    ChallengeName: "PASSWORD_VERIFIER",
+    Session: start.Session,
+    ChallengeResponses: {
+      USERNAME: userId,
+      PASSWORD_CLAIM_SECRET_BLOCK: p.SECRET_BLOCK,
+      TIMESTAMP: timestamp,
+      PASSWORD_CLAIM_SIGNATURE: signature,
+      ...extra,
+    },
+  });
+}
+
+/**
  * Responde DEVICE_SRP_AUTH e DEVICE_PASSWORD_VERIFIER (no lugar do código do MFA).
  * Devolve a resposta final do Cognito (tokens ou outro desafio).
  */

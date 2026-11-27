@@ -10,6 +10,7 @@ Chaves:
   PAINEL   LGPD#PEDIDOS   PEDIDO#<id>        pedido do usuário (correção ou exclusão)
   CLINICO  PAC#<cpf>      VISIT#<id>         índice: atendimentos do paciente
   CLINICO  PAC#<cpf>      REF#<id>           índice: encaminhamentos do paciente
+  PAINEL   USER#<sub>     TERMOS#<iso>       aceite dos termos de uso (versão e data)
 
 Exclusão da conta = anonimização: os atendimentos e a auditoria ficam (obrigação legal e
 regulatória, art. 16, I), ligados só ao código interno (sub); a identidade sai do Cognito.
@@ -38,7 +39,7 @@ ACOES = {
     "visit_create": "Registrou um atendimento",
     "visit_update": "Alterou desfecho ou Red Flag",
     "visit_read": "Abriu a ficha de um atendimento",
-    "referral_create": "Encaminhou a médico",
+    "referral_create": "Encaminhou a uma unidade de saúde",
     "referral_read": "Leu um encaminhamento",
     "referral_answered": "Respondeu um encaminhamento",
     "referral_declined": "Recusou um encaminhamento",
@@ -50,14 +51,20 @@ ACOES = {
     "lgpd_request_resolved": "Respondeu um pedido de privacidade",
     "lgpd_user_anonymized": "Anonimizou uma conta",
     "lgpd_export_patient": "Exportou os dados de um paciente",
+    "terms_accept": "Aceitou os termos de uso",
 }
 
 # o que a política de privacidade também diz, junto do arquivo exportado (art. 9º e 18, VII)
+SINCOFARMA = "Sincofarma DF: Sindicato do Comércio Varejista de Produtos Farmacêuticos do Distrito Federal"
 TRATAMENTO = {
-    "controlador": "Sincofarma DF: Sindicato do Comércio Varejista de Produtos Farmacêuticos do Distrito Federal",
+    "controlador": {
+        "pacientes": "A farmácia que fez o atendimento (cada farmácia é controladora dos dados dos pacientes que atende).",
+        "usuarios": SINCOFARMA,
+    },
+    "operador": f"{SINCOFARMA}, que fornece o painel às farmácias e trata os dados dos pacientes só para elas.",
     "finalidades": [
-        "Identificar quem acessa o painel e registrar a responsabilidade técnica de cada atendimento.",
-        "Atendimento farmacêutico, triagem e encaminhamento a médicos.",
+        "Identificar quem acessa o painel e registrar o farmacêutico responsável por cada atendimento.",
+        "Atendimento farmacêutico, classificação de risco e encaminhamento a unidades de saúde.",
         "Segurança, auditoria e prevenção de fraude.",
     ],
     "basesLegais": [
@@ -66,13 +73,15 @@ TRATAMENTO = {
         "Execução do vínculo profissional com a farmácia ou o Sincofarma (art. 7º, V).",
     ],
     "compartilhamento": [
-        "Médicos cadastrados no painel, quando o farmacêutico encaminha um atendimento.",
+        "Unidade de saúde de destino, quando o farmacêutico encaminha o paciente (recebe a ficha do atendimento).",
+        "Outras unidades de saúde da rede, só quando o paciente apresenta a guia (consultam a guia, não respondem).",
         "Amazon Web Services (São Paulo, sa-east-1): hospedagem, banco de dados e login, com criptografia.",
         "Vercel: hospedagem das telas do painel; não guarda dados de pacientes.",
     ],
     "retencao": [
-        "Registros de atendimento e encaminhamentos: pelo prazo exigido pelas normas sanitárias e de saúde.",
-        "Auditoria: mantida junto aos registros a que se refere.",
+        "Fichas de atendimento, encaminhamentos e as trilhas de auditoria deles: 20 anos a partir do registro "
+        "(prazo do prontuário, Lei 13.787/2018); depois, apagados automaticamente.",
+        "Registro geral de auditoria (sem dados de pacientes): enquanto o painel existir.",
         "Logs técnicos de acesso (inclui endereço IP): 90 dias.",
         "Conta de acesso: enquanto houver vínculo; depois, anonimizada a pedido.",
     ],
@@ -273,7 +282,7 @@ def dados_do_usuario(caller) -> dict:
             saude_nome = perfil["name"] if perfil else None
             caixa = _clinico().query(KeyConditionExpression=Key("PK").eq(f"SAUDE#{caller.health_unit}#REF")).get("Items", [])
             # da caixa da unidade, só os que este médico respondeu
-            items += [r for r in caixa if r.get("doctorName") == nome]
+            items += [r for r in caixa if r.get("doctorId") == caller.sub]
         for r in items:
             # só o que é do médico: protocolo, datas e situação; o paciente não entra
             recebidos.append({"protocolo": r.get("protocol"), "guia": r.get("code"), "recebidoEm": r.get("createdAt"),
@@ -298,6 +307,7 @@ def dados_do_usuario(caller) -> dict:
             "aparelhosLembrados": _aparelhos(caller.username),
         },
         "atividade": _atividade(caller.sub, criado),
+        "aceitesDosTermos": aceites_dos_termos(caller.sub),
         "encaminhamentosRecebidos": recebidos,
         "pedidosDePrivacidade": pedidos_de(caller.sub),
         "tratamento": TRATAMENTO,
@@ -313,8 +323,9 @@ def dados_do_usuario(caller) -> dict:
 
 # ---------------------------------------------------------------- exportação: paciente
 
-def dados_do_paciente(caller, cpf: str) -> dict:
-    """Tudo sobre um paciente, a partir do CPF (pedido feito à farmácia ou ao Sincofarma)."""
+def dados_do_paciente(caller, cpf: str, pedido: dict) -> dict:
+    """Tudo sobre um paciente, a partir do CPF, a pedido dele (feito à farmácia ou ao Sincofarma).
+    `pedido` (canal e referência) fica na auditoria: toda exportação tem um pedido por trás."""
     idx = _clinico().query(KeyConditionExpression=Key("PK").eq(f"PAC#{cpf}")).get("Items", [])
     if not idx:
         raise HttpError(404, "Nenhum registro encontrado para este CPF.")
@@ -342,11 +353,13 @@ def dados_do_paciente(caller, cpf: str) -> dict:
                 "queixa": rec.get("complaint"),
                 "historico": rec.get("history"),
                 "sinaisVitais": rec.get("vitals"),
+                "responsavelLegal": rec.get("guardian"),
                 "classificacaoDeRisco": rec.get("risk"),
                 "sinaisDeAlerta": rec.get("redFlags"),
                 "observacoes": rec.get("notes"),
+                "orientacaoFarmaceutica": rec.get("guidance"),
                 "desfecho": resumo.get("status"),
-                "responsavelTecnico": resumo.get("rt"),
+                "farmaceutico": resumo.get("rt"),
                 # quem mexeu e quando; o nome dos funcionários não entra (dado deles)
                 "registroDeAlteracoes": [
                     {"em": a["at"], "acao": repo.ACTION_LABELS.get(a["action"], a["action"])}
@@ -373,8 +386,9 @@ def dados_do_paciente(caller, cpf: str) -> dict:
                 "respondidoEm": ref.get("answeredAt"),
             })
 
-    auditoria.record("lgpd_export_patient", caller, target={"type": "patient", "label": anonymize_cpf(cpf)},
-                     details={"atendimentos": len(atendimentos), "encaminhamentos": len(encaminhamentos)})
+    auditoria.record("lgpd_export_patient", caller, target={"type": "patient", "label": anonymize_cpf(cpf), "cpfHmac": auditoria.cpf_hmac(cpf)},
+                     details={"atendimentos": len(atendimentos), "encaminhamentos": len(encaminhamentos),
+                              "canal": pedido["channel"], "pedido": pedido["reference"]})
     return {
         "geradoEm": tempo.now().isoformat(),
         "titular": "paciente",
@@ -383,6 +397,36 @@ def dados_do_paciente(caller, cpf: str) -> dict:
         "encaminhamentos": encaminhamentos,
         "tratamento": TRATAMENTO,
         "observacoes": [
-            "Dados de saúde são mantidos pelo prazo exigido pelas normas sanitárias; correções são feitas pela farmácia que registrou o atendimento.",
+            "Fichas e encaminhamentos ficam guardados por 20 anos (prazo do prontuário, Lei 13.787/2018); "
+            "correções são feitas pela farmácia que registrou o atendimento.",
         ],
     }
+
+
+# ---------------------------------------------------------------- aceite dos termos de uso
+
+def aceites_dos_termos(sub: str) -> list[dict]:
+    """Versões aceitas, da mais antiga para a mais recente."""
+    items = _painel().query(KeyConditionExpression=Key("PK").eq(f"USER#{sub}") & Key("SK").begins_with("TERMOS#")).get("Items", [])
+    return [{"versao": i["version"], "aceitoEm": i["at"]} for i in items]
+
+
+def ultimo_aceite(sub: str) -> dict | None:
+    items = _painel().query(
+        KeyConditionExpression=Key("PK").eq(f"USER#{sub}") & Key("SK").begins_with("TERMOS#"),
+        ScanIndexForward=False,
+        Limit=1,
+    ).get("Items", [])
+    return {"version": items[0]["version"], "acceptedAt": items[0]["at"]} if items else None
+
+
+def aceitar_termos(caller, version: str) -> dict:
+    """Registra o aceite (quem, qual versão, quando) e põe no registro geral de auditoria."""
+    at = tempo.now().isoformat()
+    repo._client.transact_write_items(
+        TransactItems=[
+            {"Put": {"TableName": os.environ["TABELA_PAINEL"], "Item": {"PK": f"USER#{caller.sub}", "SK": f"TERMOS#{at}", "version": version, "at": at}}},
+            auditoria.put("terms_accept", caller, target={"type": "terms", "id": version, "label": f"Termos de {version}"}),
+        ]
+    )
+    return {"version": version, "acceptedAt": at}

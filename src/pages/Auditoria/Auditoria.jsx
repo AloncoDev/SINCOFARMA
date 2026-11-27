@@ -35,6 +35,7 @@ const ACTIONS = {
   lgpd_request_resolved: { label: "Respondeu pedido de privacidade", group: "privacidade" },
   lgpd_user_anonymized: { label: "Anonimizou conta", group: "privacidade" },
   lgpd_export_patient: { label: "Exportou dados de paciente", group: "privacidade" },
+  terms_accept: { label: "Aceitou os termos de uso", group: "privacidade" },
 };
 const GROUPS = { atendimentos: "Atendimentos", encaminhamentos: "Encaminhamentos", usuarios: "Usuários, farmácias e acessos", privacidade: "Privacidade (LGPD)" };
 

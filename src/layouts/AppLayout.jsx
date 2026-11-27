@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Menu, X, WifiOff, PillBottle, Stethoscope, Building2, UserRound } from "lucide-react";
@@ -8,13 +8,16 @@ import Sidebar from "../components/Sidebar";
 import VisitDrawer from "../components/VisitDrawer";
 import Toasts from "../components/Toasts";
 import IdleWarning from "../components/IdleWarning";
-import IntroSplash from "../components/IntroSplash";
+import TermsGate from "../components/TermsGate";
 import { useIdleTimeout } from "../hooks/useIdleTimeout";
 import { DEMO_MODE, IDLE_MINUTES, IDLE_WARN_MS, idleTimeoutMs } from "../config/app";
 import { PAPEIS } from "../services/permissoes";
 import { EASE } from "../utils/motion";
 import "../styles/app.css";
 import "../styles/overlays.css";
+
+// a intro em vidro (WebGL) só aparece uma vez, depois do login: carrega sob demanda
+const IntroSplash = lazy(() => import("../components/IntroSplash"));
 
 // páginas que exibem a tabela filtrada pela busca
 const SEARCHABLE = ["/dashboard"];
@@ -229,8 +232,14 @@ export default function AppLayout() {
       <VisitDrawer />
       <Toasts />
       <AnimatePresence>
-        {intro && <IntroSplash key="intro" user={user} ready={status !== "loading"} onDone={endIntro} />}
+        {intro && (
+          <Suspense key="intro" fallback={null}>
+            <IntroSplash user={user} ready={status !== "loading"} onDone={endIntro} />
+          </Suspense>
+        )}
       </AnimatePresence>
+      {/* aceite dos termos: depois da intro, no primeiro acesso e quando os termos mudam */}
+      <TermsGate key={user?.sub ?? user?.name} userId={user?.sub ?? user?.name} enabled={!intro} onLeave={handleSignOut} />
       <IdleWarning
         open={idle.warning}
         remaining={idle.remaining}

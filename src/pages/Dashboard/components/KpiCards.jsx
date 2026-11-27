@@ -5,7 +5,8 @@ import CountUp from "../../../components/CountUp";
 import { useSpotlightTilt } from "../../../hooks/useSpotlightTilt";
 import LightBeams from "../../../components/LightBeams";
 import { EASE } from "../../../utils/motion";
-import { isReady } from "../../../config/app";
+import { useAuth } from "../../../contexts/auth";
+import { podeRota } from "../../../services/permissoes";
 
 const MotionLink = motion.create(Link);
 
@@ -32,11 +33,14 @@ function KpiCard({ to, index, className = "", children }) {
 }
 
 export default function KpiCards({ stats, loading = false }) {
+  const { user } = useAuth();
+  // cartão vira link só para quem pode abrir a tela (a administração não vê encaminhamentos)
+  const linkTo = (path) => (podeRota(user, path) ? path : undefined);
   const goalPct = Math.round(stats.goalProgress * 100);
 
   return (
     <section className={`kpis${loading ? " is-loading" : ""}`} aria-busy={loading}>
-      <KpiCard to={isReady("/atendimentos") ? "/atendimentos" : undefined} index={0} className={`kpi--primary${isReady("/atendimentos") ? " kpi--link" : ""}`}>
+      <KpiCard to={linkTo("/atendimentos")} index={0} className={`kpi--primary${linkTo("/atendimentos") ? " kpi--link" : ""}`}>
         <LightBeams className="beams--light" />
         <span className="kpi-glow" aria-hidden="true" />
         <header className="kpi-head">
@@ -87,7 +91,7 @@ export default function KpiCards({ stats, loading = false }) {
         </div>
       </KpiCard>
 
-      <KpiCard to={isReady("/encaminhamentos") ? "/encaminhamentos" : undefined} index={2} className={isReady("/encaminhamentos") ? "kpi--link" : ""}>
+      <KpiCard to={linkTo("/encaminhamentos")} index={2} className={linkTo("/encaminhamentos") ? "kpi--link" : ""}>
         <header className="kpi-head">
           <span className="kpi-icon kpi-icon--navy"><PersonStanding size={16} /></span>
           <span>ENCAMINHAMENTOS<br />SES-DF</span>
@@ -120,7 +124,7 @@ export default function KpiCards({ stats, loading = false }) {
             {stats.triageMinutes > 0 ? <CountUp value={stats.triageMinutes} delay={540} /> : <span title="Ainda sem triagens medidas neste mês">–</span>}
             <br />min
           </strong>
-          <span className="kpi-caption">protocolo<br />Manchester</span>
+          <span className="kpi-caption">classificação<br />de risco</span>
         </div>
         <div className="kpi-foot">
           <span>Acolhimento<br />farmacêutico</span>

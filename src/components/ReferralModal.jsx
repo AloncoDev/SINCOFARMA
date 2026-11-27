@@ -18,10 +18,10 @@ export default function ReferralModal({ visit, onClose }) {
 }
 
 function ReferralDialog({ visit, onClose }) {
-  const { notify } = useClinic();
+  const { notify, reload } = useClinic();
   const navigate = useNavigate();
   const [units, setUnits] = useState(null); // null = carregando
-  const [form, setForm] = useState({ healthUnitId: "", priority: visit.urgent ? "urgente" : "rotina", reason: "" });
+  const [form, setForm] = useState({ healthUnitId: "", priority: visit.urgent ? "urgente" : "rotina", reason: "", informed: false });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const ref = useRef(null);
@@ -44,12 +44,21 @@ function ReferralDialog({ visit, onClose }) {
     const errs = {};
     if (!form.healthUnitId) errs.healthUnitId = "Escolha a unidade de saúde.";
     if (reason.length < 5) errs.reason = "Explique o motivo (mínimo 5 caracteres).";
+    if (!form.informed) errs.patientInformed = "Confirme que o paciente foi informado.";
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setBusy(true);
     try {
-      const created = await repository.createReferral({ visitId: visit.id, healthUnitId: form.healthUnitId, reason, priority: form.priority });
+      const created = await repository.createReferral({
+        visitId: visit.id,
+        healthUnitId: form.healthUnitId,
+        reason,
+        priority: form.priority,
+        patientInformed: form.informed,
+      });
       notify(`Encaminhado para ${created.healthUnit?.name ?? "a unidade de saúde"}. Guia ${created.code} pronta para imprimir.`, "success");
+      // o atendimento passou a "Encaminhado" no servidor
+      reload();
       onClose();
       // abre direto a guia para imprimir e entregar ao paciente
       navigate(`/encaminhamentos/${created.id}/guia`);
@@ -137,8 +146,25 @@ function ReferralDialog({ visit, onClose }) {
             {errors.reason && <small className="field-error"><AlertCircle size={12} /> {errors.reason}</small>}
           </div>
 
+          <div className={`field${errors.patientInformed ? " has-error" : ""}`}>
+            <label className="ref-consent">
+              <input
+                type="checkbox"
+                checked={form.informed}
+                onChange={(e) => setForm((f) => ({ ...f, informed: e.target.checked }))}
+                aria-invalid={!!errors.patientInformed || undefined}
+              />
+              <span>
+                Expliquei ao paciente (ou ao responsável) para onde ele está sendo encaminhado, que a unidade de
+                destino recebe a ficha deste atendimento e que qualquer unidade de saúde da rede pode consultar a guia quando ele a
+                apresentar.
+              </span>
+            </label>
+            {errors.patientInformed && <small className="field-error"><AlertCircle size={12} /> {errors.patientInformed}</small>}
+          </div>
+
           <p className="ref-modal-note">
-            Gera a guia de encaminhamento (com código e QR code) para o paciente levar. Qualquer médico da unidade recebe uma cópia da ficha (CPF mascarado) e responde pelo painel.
+            Gera a guia de encaminhamento (com código e QR code) para o paciente levar. Os médicos da unidade de destino recebem uma cópia da ficha (CPF mascarado) e respondem pelo painel.
           </p>
         </div>
 

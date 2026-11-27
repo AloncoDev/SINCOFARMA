@@ -24,3 +24,13 @@ describe("cpf", () => {
     expect(anonymizeCpf("123")).toBe("***.***.***-**");
   });
 });
+
+describe("CNPJ", () => {
+  it("confere os dígitos verificadores", async () => {
+    const { isValidCnpj, maskCnpj } = await import("./cpf");
+    expect(isValidCnpj("11.222.333/0001-81")).toBe(true);
+    expect(isValidCnpj("11222333000100")).toBe(false);
+    expect(isValidCnpj("00000000000000")).toBe(false);
+    expect(maskCnpj("11222333000181")).toBe("11.222.333/0001-81");
+  });
+});

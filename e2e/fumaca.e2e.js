@@ -4,6 +4,7 @@
 // bloquear alguma coisa.
 import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
+import { termosAceitos } from "./termos";
 
 const vercel = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
 const CSP = vercel.headers
@@ -41,7 +42,8 @@ async function conferirTela(page, caminho) {
   await expect(page.getByRole("heading", { name: /Algo deu errado|Nova versão disponível/ })).toHaveCount(0);
 }
 
-async function entrar(page) {
+async function entrar(page, { aceitos = true } = {}) {
+  if (aceitos) await termosAceitos(page);
   await page.goto("/login");
   await page.locator("#identifier").fill("CRF 12345/DF");
   await page.locator("#password").fill(DEMO_SENHA);
@@ -56,6 +58,21 @@ test("telas abertas sem login: login, política de privacidade e termos de uso",
     await page.goto(caminho);
     await conferirTela(page, caminho);
   }
+  expect(erros).toEqual([]);
+});
+
+test("pede o aceite dos termos de uso no primeiro acesso", async ({ page }, info) => {
+  test.skip(info.project.name !== "farmaceutico", "igual em todos os perfis");
+  const erros = await vigiar(page);
+  await entrar(page, { aceitos: false });
+  const gate = page.getByRole("alertdialog", { name: "Termos de uso do painel" });
+  await expect(gate).toBeVisible({ timeout: 15000 });
+  const aceitar = gate.getByRole("button", { name: "Aceitar e continuar" });
+  await expect(aceitar).toBeDisabled();
+  await gate.getByRole("checkbox").check();
+  await aceitar.click();
+  await expect(gate).toBeHidden();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("sinco:termos")).version)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(erros).toEqual([]);
 });
 
@@ -85,6 +102,11 @@ test("abre um encaminhamento (e, para o farmacêutico, a ficha do atendimento)",
     await ficha.first().click();
     await expect(page).toHaveURL(/\/ficha\/[^/]+$/);
     await expect(page.locator("h1").first()).toBeVisible();
+    // declaração de serviço farmacêutico (RDC 44/2009), em duas vias
+    await page.getByRole("link", { name: "Declaração ao paciente" }).click();
+    await expect(page).toHaveURL(/\/ficha\/[^/]+\/declaracao$/);
+    await expect(page.getByRole("article", { name: /1ª via/ })).toContainText("Assinatura e carimbo do(a) farmacêutico(a)");
+    await expect(page.getByRole("article", { name: /2ª via/ })).toBeVisible();
   } else {
     // o médico vê só o que foi encaminhado, não a ficha completa
     await expect(ficha).toHaveCount(0);

@@ -5,7 +5,8 @@ import SpotlightCard from "../../../components/SpotlightCard";
 import { EASE } from "../../../utils/motion";
 import { OUTCOME_META } from "../../../data/catalog";
 import { monthLabel } from "../../../utils/dates";
-import { isReady } from "../../../config/app";
+import { useAuth } from "../../../contexts/auth";
+import { podeRota } from "../../../services/permissoes";
 import CountUp from "../../../components/CountUp";
 
 const R = 62;
@@ -35,6 +36,7 @@ function buildSegments(outcomes) {
 }
 
 export default function OutcomeDonut({ outcomes }) {
+  const { user } = useAuth();
   const [active, setActive] = useState(null);
   const segments = buildSegments(outcomes);
   const current = segments.find((s) => s.key === active) ?? segments[0];
@@ -116,7 +118,7 @@ export default function OutcomeDonut({ outcomes }) {
                 </>
               );
               const label = `${s.label}: ${s.percent}%, ${s.count} atendimentos`;
-              return isReady(page) ? (
+              return podeRota(user, page) ? (
                 <Link to={to} className="legend-link" aria-label={label}>{inner}</Link>
               ) : (
                 <button

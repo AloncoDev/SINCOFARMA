@@ -6,7 +6,7 @@
 //  - clinical: dados pessoais e clínicos completos. Só vão para o servidor;
 //    o repositório simulado descarta esta parte.
 import { anonymizeCpf, digits } from "../../utils/cpf";
-import { toNum } from "./validation";
+import { isMinor, toNum } from "./validation";
 import { URGENT_RISKS } from "./constants";
 
 export function computeImc(peso, alturaCm) {
@@ -28,7 +28,7 @@ export function formatSigns(form) {
     .join(" · ");
 }
 
-export function buildTriageRecord(form, { pharmacist, protocol }) {
+export function buildTriageRecord(form, { pharmacist, protocol }, now = new Date()) {
   const urgent = URGENT_RISKS.has(form.risco) || form.redFlags.length > 0;
 
   const summary = {
@@ -53,6 +53,10 @@ export function buildTriageRecord(form, { pharmacist, protocol }) {
       sex: form.sexo,
       phone: digits(form.telefone) || null,
     },
+    // menor de idade: quem o acompanha (vai na ficha, na guia e na declaração)
+    guardian: isMinor(form, now)
+      ? { name: form.respNome.trim().replace(/\s+/g, " "), cpf: digits(form.respCpf), relation: form.respParentesco }
+      : null,
     complaint: {
       text: summary.complaint,
       code: form.codigo.trim() || null,
@@ -76,6 +80,8 @@ export function buildTriageRecord(form, { pharmacist, protocol }) {
     risk: form.risco,
     redFlags: [...form.redFlags],
     notes: form.observacoes.trim() || null,
+    // orientação dada ao paciente: vai na Declaração de Serviço Farmacêutico (RDC 44/2009)
+    guidance: form.orientacao.trim() || null,
   };
 
   return { summary, clinical };

@@ -22,6 +22,19 @@ export const CODE_SUGGESTIONS = [
 ];
 
 export const OBS_LIMIT = 500;
+export const GUIDANCE_LIMIT = 1000;
+
+/** Abaixo disso o atendimento exige o responsável legal presente (ECA; LGPD, art. 14). */
+export const MAIORIDADE = 18;
+
+/** Parentesco de quem acompanha o menor (mesmos códigos do servidor). */
+export const GUARDIAN_RELATIONS = [
+  { value: "mae", label: "Mãe" },
+  { value: "pai", label: "Pai" },
+  { value: "avo", label: "Avó ou avô" },
+  { value: "tutor", label: "Tutor(a) ou guardião legal" },
+  { value: "outro", label: "Outro responsável legal" },
+];
 
 /* faixas plausíveis para aferição em farmácia (fora disso é erro de digitação) */
 export const RANGES = {
@@ -36,10 +49,11 @@ export const RANGES = {
 
 export const INITIAL = {
   cpf: "", cns: "", nome: "", nascimento: "", sexo: "", telefone: "",
+  respNome: "", respCpf: "", respParentesco: "",
   queixa: "", codigo: "", inicioSintomas: "",
   alergias: [], comorbidades: [], medicamentos: [],
   paSis: "", paDia: "", fc: "", spo2: "", temp: "", peso: "", altura: "",
-  risco: "", redFlags: [], observacoes: "",
+  risco: "", redFlags: [], orientacao: "", observacoes: "",
 };
 
 export const STEP_STATUS_LABEL = { done: "Concluída", active: "Ativa", pending: "Pendente", optional: "Opcional" };

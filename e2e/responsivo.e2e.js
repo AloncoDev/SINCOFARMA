@@ -3,6 +3,7 @@
 // Falha se o login cortar ou empurrar o botão de entrar para baixo da dobra, se algum
 // campo sair do card, ou se uma tela do painel ganhar rolagem horizontal.
 import { test, expect } from "@playwright/test";
+import { termosAceitos } from "./termos";
 
 // largura × altura em px CSS, já com o zoom do Windows aplicado
 const TELAS_PC = [
@@ -59,6 +60,7 @@ for (const tela of TELAS_PC) {
     });
 
     test("telas do painel sem rolagem horizontal", async ({ page }, info) => {
+      await termosAceitos(page);
       await page.goto("/login");
       await page.locator("#identifier").fill("CRF 12345/DF");
       await page.locator("#password").fill("12345678");

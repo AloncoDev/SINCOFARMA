@@ -37,3 +37,6 @@ __pycache__/
 
 # memória do Claude (anotações locais, fora do repositório)
 memoria claude/
+
+# prints das telas (gerados para revisão)
+prints/

@@ -15,6 +15,19 @@ export function applyMask(value, pattern) {
 }
 
 export const maskCpf = (value) => applyMask(value, "###.###.###-##");
+export const maskCnpj = (value) => applyMask(value, "##.###.###/####-##");
+
+/** CNPJ pelos dígitos verificadores (rejeita sequências repetidas). */
+export function isValidCnpj(value) {
+  const d = digits(value);
+  if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false;
+  const check = (len) => {
+    const weights = [...Array.from({ length: len - 8 }, (_, i) => len - 7 - i), 9, 8, 7, 6, 5, 4, 3, 2];
+    const r = weights.reduce((sum, w, i) => sum + Number(d[i]) * w, 0) % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return check(12) === Number(d[12]) && check(13) === Number(d[13]);
+}
 
 /** Validação pelos dígitos verificadores (rejeita sequências repetidas). */
 export function isValidCpf(value) {

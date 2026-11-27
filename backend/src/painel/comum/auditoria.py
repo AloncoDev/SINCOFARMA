@@ -7,9 +7,11 @@ atendimento continua na tabela CLINICO, junto ao registro):
 Uma partição por mês: a tela de Auditoria lê um mês de cada vez, mais recentes primeiro.
 """
 
+import base64
 import os
 import secrets
 
+import boto3
 from boto3.dynamodb.conditions import Key
 
 from . import tempo
@@ -31,6 +33,16 @@ def entry(action: str, caller, *, unit: str | None = None, target: dict | None =
         "target": target or {},
         "details": details or {},
     }
+
+
+def cpf_hmac(cpf: str) -> str | None:
+    """Impressão digital do CPF (HMAC na chave KMS própria da auditoria): permite responder
+    "quem exportou os dados deste paciente?" sem guardar o CPF no registro geral."""
+    key = os.environ.get("CHAVE_AUDITORIA")
+    if not key:
+        return None
+    mac = boto3.client("kms").generate_mac(KeyId=key, Message=cpf.encode(), MacAlgorithm="HMAC_SHA_256")["Mac"]
+    return base64.urlsafe_b64encode(mac).decode().rstrip("=")
 
 
 def put(action: str, caller, **kw) -> dict:

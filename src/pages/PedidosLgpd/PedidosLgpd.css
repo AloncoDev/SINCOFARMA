@@ -64,6 +64,7 @@
 
 /* formulários e ações (a página não carrega o CSS da Minha conta) */
 .lgpd-form { display: grid; gap: 12px; }
-.lgpd-form .field span, .lgpd-answer .field span { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); }
+/* só o rótulo (filho direto): o Select tem spans próprios */
+.lgpd-form .field > span, .lgpd-answer .field > span { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); }
 .lgpd-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .lgpd-error { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #b91c1c; }

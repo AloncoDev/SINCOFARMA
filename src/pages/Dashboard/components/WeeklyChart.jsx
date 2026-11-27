@@ -80,7 +80,13 @@ export default function WeeklyChart({ week, todayIndex, historicAverage = 17 }) 
                   </span>
                 </span>
                 <span className={`bar-label${isToday ? " is-today" : ""}`}>
-                  {isToday ? `${WEEK_LABELS[idx]} · Hoje` : WEEK_LABELS[idx]}
+                  {isToday ? (
+                    <>
+                      <span className="bar-label-day">{WEEK_LABELS[idx]} · </span>Hoje
+                    </>
+                  ) : (
+                    WEEK_LABELS[idx]
+                  )}
                 </span>
               </button>
             );

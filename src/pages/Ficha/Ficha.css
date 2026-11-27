@@ -1,5 +1,7 @@
 /* ---------- Ficha do atendimento ---------- */
 .ficha-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ficha-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ficha-actions a.btn { text-decoration: none; }
 .ficha-back { display: inline-flex; align-items: center; gap: 6px; }
 .ficha-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
 .ficha-tag {
@@ -78,4 +80,9 @@
   .ficha-card { box-shadow: none !important; border: 1px solid #d1d5db !important; break-inside: avoid; }
   .ficha-grid { grid-template-columns: 1fr 1fr; }
   * { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 640px) {
+  .ficha-top { flex-direction: column; align-items: stretch; }
+  .ficha-actions .btn { flex: 1 1 auto; justify-content: center; }
 }

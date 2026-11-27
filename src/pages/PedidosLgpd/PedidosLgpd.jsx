@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ShieldCheck, TriangleAlert, Download, FileText, AlertCircle, UserX, PencilLine, Inbox } from "lucide-react";
 import SpotlightCard from "../../components/SpotlightCard";
+import Select from "../../components/Select";
 import { repository } from "../../data";
 import { useClinic } from "../../contexts/clinic";
 import { maskCpf, isValidCpf } from "../../utils/cpf";
@@ -194,8 +195,19 @@ function RequestItem({ request: r, notify, onAnswered }) {
   );
 }
 
+const CHANNELS = [
+  { value: "presencial", label: "Presencial (na farmácia ou no Sincofarma)" },
+  { value: "email", label: "E-mail" },
+  { value: "telefone", label: "Telefone" },
+  { value: "carta", label: "Carta ou ofício" },
+  { value: "outro", label: "Outro" },
+];
+
 function PatientExport({ notify }) {
   const [cpf, setCpf] = useState("");
+  // toda exportação tem um pedido do paciente por trás: canal e referência vão para a auditoria
+  const [channel, setChannel] = useState("");
+  const [reference, setReference] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [last, setLast] = useState(null);
@@ -203,13 +215,16 @@ function PatientExport({ notify }) {
   async function run(e) {
     e.preventDefault();
     if (!isValidCpf(cpf)) return setError("CPF inválido.");
+    if (!channel) return setError("Diga como o paciente fez o pedido.");
+    if (reference.trim().length < 3) return setError("Descreva o pedido (protocolo, data do e-mail, nº do ofício…).");
     setError("");
     setBusy(true);
     try {
-      const data = await repository.exportPatient(cpf);
+      const data = await repository.exportPatient(cpf, { channel, reference: reference.trim() });
       downloadJson(datedName(`sincofarma-paciente-${cpf.replace(/\D/g, "").slice(-2)}`), data);
       setLast({ atendimentos: data.atendimentos.length, encaminhamentos: data.encaminhamentos.length, cpf: data.cpf });
       setCpf("");
+      setReference("");
       notify("Arquivo do paciente baixado.", "success");
     } catch (err) {
       setError(err.message);
@@ -228,6 +243,7 @@ function PatientExport({ notify }) {
       </header>
       <ol className="lgpd-steps">
         <li>Confira um documento com foto do paciente (ou de quem o representa).</li>
+        <li>Registre como ele pediu e uma referência do pedido (fica na auditoria).</li>
         <li>Digite o CPF e baixe o arquivo.</li>
         <li>Entregue o arquivo ao paciente por um meio seguro.</li>
       </ol>
@@ -236,6 +252,15 @@ function PatientExport({ notify }) {
           <span>CPF DO PACIENTE</span>
           <input inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={cpf}
             onChange={(e) => setCpf(maskCpf(e.target.value))} />
+        </label>
+        <div className="field">
+          <span id="lgpd-channel-label">COMO O PACIENTE PEDIU</span>
+          <Select className="sel--field" aria-labelledby="lgpd-channel-label" placeholder="Selecione" value={channel} onChange={setChannel} options={CHANNELS} />
+        </div>
+        <label className="field">
+          <span>REFERÊNCIA DO PEDIDO</span>
+          <input autoComplete="off" maxLength={200} placeholder="Ex.: pedido assinado no balcão em 20/11/2026" value={reference}
+            onChange={(e) => setReference(e.target.value)} />
         </label>
         {error && <p className="lgpd-error" role="alert"><AlertCircle size={14} /> {error}</p>}
         <div className="lgpd-actions">

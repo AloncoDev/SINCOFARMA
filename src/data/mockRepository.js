@@ -8,6 +8,7 @@ import { CODE_ALPHABET, normalizeCode } from "../utils/guia";
 import { trackDay, trackVisit } from "./mockAcompanhamento";
 
 const KEY = "sinco:clinic";
+const TERMS_KEY = "sinco:termos";
 const SCHEMA = 2;
 const LATENCY = 350;
 
@@ -107,6 +108,22 @@ function seedReferrals() {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** "PA 120/80 mmHg · FC 72 bpm · SpO2 98% · Tax 36,5 °C" -> sinais vitais da ficha (demonstração). */
+function vitalsFromSigns(signs = "") {
+  const num = (re) => {
+    const m = String(signs).match(re);
+    return m ? Number(m[1].replace(",", ".")) : null;
+  };
+  const pa = String(signs).match(/PA (\d+)\/(\d+)/);
+  return {
+    systolic: pa ? Number(pa[1]) : null,
+    diastolic: pa ? Number(pa[2]) : null,
+    heartRate: num(/FC (\d+)/),
+    spo2: num(/SpO2 (\d+)/),
+    temperature: num(/Tax ([\d,]+)/),
+  };
+}
 
 function seedsForToday() {
   const today = new Date();
@@ -333,8 +350,13 @@ export const mockRepository = {
     return found;
   },
 
-  async createReferral({ visitId, healthUnitId, reason, priority = "rotina" }) {
+  async createReferral({ visitId, healthUnitId, reason, priority = "rotina", patientInformed = false }) {
     await wait(LATENCY);
+    if (!patientInformed) {
+      throw Object.assign(new Error("Confirme que o paciente foi informado do encaminhamento."), {
+        data: { details: { fields: { patientInformed: "Confirme que o paciente foi informado." } } },
+      });
+    }
     const old = archiveDay(visitId);
     const visit = current().visits.find((v) => v.id === visitId) ?? (old ? archiveFor(old) : []).find((v) => v.id === visitId);
     const health = healthUnits.find((u) => u.id === healthUnitId);
@@ -356,6 +378,7 @@ export const mockRepository = {
       urgent: priority === "urgente" || !!visit.urgent,
       reason,
       from: { name: "Dra. Ana Souza", crf: "4192" },
+      attendedBy: { name: visit.rt ?? "Dra. Ana Souza", crf: visit.rt && visit.rt !== "Dra. Ana Souza" ? null : "4192" },
       healthUnit: { id: health.id, name: health.name, kind: health.kind },
       readBy: null,
       doctor: null,
@@ -368,6 +391,11 @@ export const mockRepository = {
       mine: true,
     };
     referrals = [ref, ...referrals];
+    // como no servidor: o atendimento de hoje passa a "encaminhado"
+    if (current().visits.some((v) => v.id === visitId)) {
+      loaded = { ...current(), visits: current().visits.map((v) => (v.id === visitId ? { ...v, status: "referred" } : v)) };
+      write(loaded);
+    }
     return ref;
   },
 
@@ -391,18 +419,23 @@ export const mockRepository = {
     const visit = current().visits.find((v) => v.id === id) ?? (old ? archiveFor(old) : []).find((v) => v.id === id);
     if (!visit) throw new Error("Atendimento não encontrado.");
     return {
-      visit,
+      // na demonstração, a Dra. Ana Souza (usuária de exemplo) tem CRF
+      visit: { ...visit, rtCrf: visit.rtCrf ?? ((visit.rt || "Dra. Ana Souza") === "Dra. Ana Souza" ? "4192" : null) },
       record: {
         protocol: visit.protocol,
         at: visit.at,
         patient: { name: visit.name, cpf: visit.cpf },
+        guardian: null,
         complaint: { text: visit.complaint },
         history: { allergies: [], comorbidities: [], medications: [] },
-        vitals: {},
+        // a demonstração não guarda a ficha: os sinais vêm do resumo
+        vitals: vitalsFromSigns(visit.signs),
         risk: visit.risk ?? null,
         redFlags: visit.redFlags ?? [],
-        notes: visit.signs || null,
+        notes: null,
+        guidance: "Demonstração: a orientação registrada na triagem aparece aqui.",
       },
+      pharmacy: (({ name, cnpj, address, phone }) => ({ name, cnpj, address, phone }))(pharmacies.find((p) => p.id === "demo") ?? { name: unit }),
       history: [{ at: visit.at, action: "create", label: "Atendimento registrado", actor: visit.rt || "Dra. Ana Souza", changes: {} }],
     };
   },
@@ -456,12 +489,12 @@ export const mockRepository = {
     return buildReport(pharmacies, month, unit, new Date(), liveCounts());
   },
 
-  async createPharmacy({ id, name, monthGoal, triageGoalMin }) {
+  async createPharmacy({ id, name, monthGoal, triageGoalMin, cnpj = "", address = "", phone = "" }) {
     await wait(LATENCY);
     if (pharmacies.some((p) => p.id === id)) {
       throw Object.assign(new Error("Já existe uma farmácia com este código."), { data: { details: { fields: { id: "Código em uso." } } } });
     }
-    const created = { id, name, monthGoal, triageGoalMin, pharmacists: { active: 0, pending: 0 } };
+    const created = { id, name, monthGoal, triageGoalMin, cnpj, address, phone, pharmacists: { active: 0, pending: 0 } };
     pharmacies = [...pharmacies, created];
     return (await this.listPharmacies()).units.find((p) => p.id === id);
   },
@@ -552,6 +585,27 @@ export const mockRepository = {
   async exportPatient() {
     await wait(LATENCY);
     throw new Error("Na demonstração não há pacientes reais para exportar.");
+  },
+
+  /* ---------- aceite dos termos de uso (na demonstração, guardado no navegador) ---------- */
+  async getTermsAcceptance() {
+    await wait(LATENCY / 2);
+    try {
+      return JSON.parse(localStorage.getItem(TERMS_KEY) || "null");
+    } catch {
+      return null;
+    }
+  },
+
+  async acceptTerms(version) {
+    await wait(LATENCY / 2);
+    const accepted = { version, acceptedAt: new Date().toISOString() };
+    try {
+      localStorage.setItem(TERMS_KEY, JSON.stringify(accepted));
+    } catch {
+      /* navegador sem armazenamento: pergunta de novo no próximo acesso */
+    }
+    return accepted;
   },
 
   async reset() {

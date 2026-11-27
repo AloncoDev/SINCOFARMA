@@ -1515,3 +1515,29 @@ tr:hover .avatar { transform: scale(1.1); }
   .dash { display: block !important; }
   .dash-main, .dash-content { width: 100% !important; max-width: none !important; margin: 0 !important; }
 }
+
+/* ---------- celular: filtros empilhados e tabelas em formato de lista ---------- */
+@media (max-width: 640px) {
+  .table-card > .card-head { flex-direction: column; align-items: stretch; }
+  .table-tools { flex-wrap: wrap; width: 100%; }
+  .table-tools > * { flex: 1 1 100%; }
+  .table-tools .btn-filter { width: 100%; justify-content: space-between; }
+
+  /* cada linha vira um bloco: a 1ª coluna (quem/o quê) em cima, o resto em linha embaixo */
+  .table-scroll .visits { min-width: 0 !important; }
+  .visits thead { display: none; }
+  .visits tbody tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 12px 16px; border-top: 1px solid var(--line); }
+  .visits tbody td { display: block; padding: 0 !important; border: 0 !important; }
+  .visits tbody td:first-child { flex: 1 1 100%; box-shadow: none !important; }
+  .visits tbody td.ta-right, .visits tbody td.ta-center { margin-left: auto; }
+  .visits tbody td.empty { flex: 1 1 100%; justify-content: center; }
+  .visits tbody tr.is-urgent { box-shadow: inset 3px 0 0 var(--c-red); }
+  .visits tfoot tr { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px 16px; }
+  .visits tfoot td { padding: 0 !important; border: 0 !important; }
+  .visits tfoot td:empty { display: none; }
+}
+
+/* gráfico da semana no celular: o dia de hoje aparece só como "Hoje" */
+@media (max-width: 640px) {
+  .bar-label-day { display: none; }
+}

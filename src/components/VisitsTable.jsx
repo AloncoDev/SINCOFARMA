@@ -15,7 +15,6 @@ import { STATUS } from "../data/catalog";
 import { useClinic, useSearch, matchesQuery } from "../contexts/clinic";
 import SpotlightCard from "./SpotlightCard";
 import Select from "./Select";
-import { isReady } from "../config/app";
 import { initials } from "../utils/initials";
 
 const FILTERS = [
@@ -36,7 +35,6 @@ export default function VisitsTable({
   title = "Últimos Atendimentos Farmacêuticos",
   subtitle = "Registros recentes de acolhimento clínico na unidade",
   limit,
-  lockedFilter,
   showViewAll = false,
   delay = 6,
   // lista de fora (ex.: um dia anterior em Atendimentos); padrão: a de hoje
@@ -50,16 +48,14 @@ export default function VisitsTable({
   const { visits: todayVisits, openVisit } = useClinic();
   const visits = visitsProp ?? todayVisits;
   const { query, setQuery } = useSearch();
-  const [ownFilter, setOwnFilter] = useState(lockedFilter ?? "all");
+  const [ownFilter, setOwnFilter] = useState("all");
   const filter = filterProp ?? ownFilter;
   const setFilter = onFilterChange ?? setOwnFilter;
-  const [expanded, setExpanded] = useState(false);
-  const listPage = isReady("/atendimentos");
 
   const filtered = visits
     .filter((v) => filter === "all" || (filter === "urgent" ? v.urgent : v.status === filter))
     .filter((v) => matchesQuery(v, query));
-  const cut = limit && !query && !expanded;
+  const cut = limit && !query;
   const visible = cut ? filtered.slice(0, limit) : filtered;
 
   return (
@@ -70,29 +66,19 @@ export default function VisitsTable({
           <p>{subtitle}</p>
         </div>
         <div className="table-tools">
-          {!lockedFilter && (
-            <Select
-              className={`btn-filter${filter !== "all" ? " is-filtered" : ""}`}
-              icon={ListFilter}
-              label="Filtrar por desfecho"
-              value={filter}
-              onChange={setFilter}
-              options={FILTERS.map((f) => ({ value: f.key, label: f.label }))}
-            />
+          <Select
+            className={`btn-filter${filter !== "all" ? " is-filtered" : ""}`}
+            icon={ListFilter}
+            label="Filtrar por desfecho"
+            value={filter}
+            onChange={setFilter}
+            options={FILTERS.map((f) => ({ value: f.key, label: f.label }))}
+          />
+          {showViewAll && (
+            <Link to="/atendimentos" className="link-arrow">
+              Ver todos ({visits.length}) <ArrowRight size={14} />
+            </Link>
           )}
-          {showViewAll &&
-            (listPage ? (
-              <Link to="/atendimentos" className="link-arrow">
-                Ver todos ({visits.length}) <ArrowRight size={14} />
-              </Link>
-            ) : (
-              limit && filtered.length > limit && !query && (
-                <button type="button" className="link-arrow link-btn" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
-                  {expanded ? "Mostrar menos" : `Ver todos (${filtered.length})`}
-                  <ArrowRight size={14} className={expanded ? "rot-up" : "rot-down"} />
-                </button>
-              )
-            ))}
         </div>
       </header>
 
@@ -124,7 +110,7 @@ export default function VisitsTable({
               <th>PACIENTE / IDENTIFICADOR</th>
               <th>QUEIXA PRINCIPAL &amp; SINAIS</th>
               <th>HORÁRIO</th>
-              <th>RT RESPONSÁVEL</th>
+              <th>FARMACÊUTICO(A)</th>
               <th className="ta-right">STATUS / DESFECHO</th>
               <th className="ta-center">AÇÃO</th>
             </tr>
@@ -235,15 +221,9 @@ export default function VisitsTable({
       {cut && filtered.length > limit && (
         <div className="table-more">
           Mostrando {limit} de {filtered.length} ·{" "}
-          {listPage ? (
-            <Link to="/atendimentos" className="link-arrow">
-              ver lista completa <ArrowRight size={14} />
-            </Link>
-          ) : (
-            <button type="button" className="link-arrow link-btn" onClick={() => setExpanded(true)}>
-              mostrar todos <ArrowRight size={14} className="rot-down" />
-            </button>
-          )}
+          <Link to="/atendimentos" className="link-arrow">
+            ver lista completa <ArrowRight size={14} />
+          </Link>
         </div>
       )}
     </SpotlightCard>

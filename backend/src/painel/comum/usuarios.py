@@ -159,6 +159,10 @@ def update(caller, sub: str, data: dict) -> dict:
         # ninguém se tranca para fora: a própria conta não perde o admin nem é desativada
         if data.get("enabled") is False or (roles is not None and "admin" not in roles):
             raise HttpError(422, "Você não pode desativar a própria conta nem tirar o próprio perfil de administração.")
+        # nem se dá outro perfil ou unidade (seria se dar acesso a dados de pacientes): outro admin faz
+        current_roles = {g[len(ROLE_PREFIX):] for g in groups if g.startswith(ROLE_PREFIX)}
+        if (roles is not None and set(roles) != current_roles) or "unit" in data or "healthUnit" in data:
+            raise HttpError(422, "Você não pode mudar o próprio perfil nem a própria unidade. Peça a outro administrador.")
     final_roles = roles if roles is not None else [g[len(ROLE_PREFIX):] for g in groups if g.startswith(ROLE_PREFIX)]
     final_unit = data["unit"] if "unit" in data else next((g[len(UNIT_PREFIX):] for g in groups if g.startswith(UNIT_PREFIX)), None)
     if "farmaceutico" in final_roles and not final_unit:

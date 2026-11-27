@@ -241,3 +241,13 @@
   .rep-table { min-width: 0; }
   * { animation: none !important; transition: none !important; }
 }
+
+@media (max-width: 640px) {
+  .rep-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rep-kpis > :first-child { grid-column: 1 / -1; }
+  .rep-chart { padding-right: 46px; }
+  .rep-grid { right: 46px; }
+  .rep-chart.is-dense .rep-col:not(:nth-child(5n + 1)) .rep-x { visibility: hidden; }
+  .rep-bar { flex-direction: column; align-items: stretch; }
+  .rep-unit-select { width: 100%; }
+}

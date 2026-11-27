@@ -71,6 +71,10 @@ def unit_profile(unit: str) -> dict:
         "name": item.get("name") or unit,
         "monthGoal": int(item.get("monthGoal") or 0),
         "triageGoalMin": int(item.get("triageGoalMin") or 10),
+        # identificação na Declaração de Serviço Farmacêutico
+        "cnpj": item.get("cnpj") or "",
+        "address": item.get("address") or "",
+        "phone": item.get("phone") or "",
     }
 
 
@@ -139,6 +143,7 @@ def _public_visit(item: dict, viewer_sub: str) -> dict:
         "complaint": item["complaint"],
         "signs": item.get("signs", ""),
         "rt": item.get("rt", ""),
+        "rtCrf": item.get("rtCrf"),
         "protocol": item.get("protocol"),
         "risk": item.get("risk"),
         "redFlags": item.get("redFlags", []),
@@ -194,7 +199,7 @@ def name_of_sub(sub: str) -> str:
 def patient_index(cpf: str, kind: str, item_id: str, unit: str, at: str) -> dict:
     """Item do índice PAC#<cpf> (VISIT ou REF) para a mesma transação do registro."""
     return {"Put": {"TableName": os.environ["TABELA_CLINICO"], "Item": {
-        "PK": f"PAC#{cpf}", "SK": f"{kind}#{item_id}", "unit": unit, "at": at,
+        "PK": f"PAC#{cpf}", "SK": f"{kind}#{item_id}", "unit": unit, "at": at, "expiraEm": tempo.expira_em(at),
     }}}
 
 
@@ -225,6 +230,7 @@ def _audit(table: str, visit_id: str, caller, action: str, changes: dict) -> dic
         "actorSub": caller.sub,
         "unit": caller.unit_id,
         "changes": changes,
+        "expiraEm": tempo.expira_em(at),
     }
     log.info(json.dumps({"evento": "auditoria", "acao": action, "visita": visit_id, "usuario": caller.sub, "unidade": caller.unit_id}))
     return {"Put": {"TableName": table, "Item": item}}
@@ -249,6 +255,8 @@ def create_visit(caller, summary: dict, clinical: dict, duration_sec: int) -> di
         "rtCrf": rt["crf"],
         "createdBy": caller.sub,
         "protocol": protocol,
+        # apagado sozinho depois do prazo de guarda (os contadores do dia e do mês ficam)
+        "expiraEm": tempo.expira_em(at),
     }
     record = {
         "PK": f"VISIT#{visit_id}",
@@ -258,6 +266,7 @@ def create_visit(caller, summary: dict, clinical: dict, duration_sec: int) -> di
         "protocol": protocol,
         "createdBy": caller.sub,
         **clinical,
+        "expiraEm": tempo.expira_em(at),
     }
     counters = {"total": 1, summary["status"]: 1, "urgent": int(summary["urgent"]), "durSum": duration_sec, "durCount": int(duration_sec > 0)}
 
@@ -290,6 +299,10 @@ def update_visit(caller, visit_id: str, patch: dict) -> dict:
     painel, clinico = os.environ["TABELA_PAINEL"], os.environ["TABELA_CLINICO"]
     new_status = patch.get("status", current["status"])
     new_urgent = patch.get("urgent", bool(current.get("urgent")))
+    # a Red Flag vem da triagem: risco laranja/vermelho ou sinal de alerta marcado não deixam desligar
+    if not new_urgent and (current.get("risk") in ("laranja", "vermelho") or current.get("redFlags")):
+        raise HttpError(422, "Este atendimento tem risco alto ou sinal de alerta: a Red Flag não pode ser retirada.",
+                        {"fields": {"urgent": "Obrigatória pela classificação de risco."}})
     if new_status == current["status"] and new_urgent == bool(current.get("urgent")):
         return _public_visit(current, caller.sub)  # nada mudou
 
@@ -376,9 +389,12 @@ def visit_record(caller, visit_id: str) -> dict:
     history = sorted((i for i in items if i["SK"].startswith("AUDIT#")), key=lambda i: i["at"])
     # abrir a ficha (CPF, telefone, dados de saúde) também fica registrado (LGPD, art. 37)
     auditoria.record("visit_read", caller, target={"type": "visit", "id": visit_id, "label": record.get("protocol")})
+    unit = unit_profile(caller.unit_id)
     return {
         "visit": _public_visit(visit, caller.sub),
-        "record": {k: v for k, v in record.items() if k not in ("PK", "SK", "unit", "createdBy")},
+        "record": {k: v for k, v in record.items() if k not in ("PK", "SK", "unit", "createdBy", "expiraEm")},
+        # para a Declaração de Serviço Farmacêutico
+        "pharmacy": {k: unit[k] for k in ("name", "cnpj", "address", "phone")},
         "history": [
             {
                 "at": h["at"],
@@ -390,3 +406,22 @@ def visit_record(caller, visit_id: str) -> dict:
             for h in history
         ],
     }
+
+
+# ---------- limite diário por usuário (consultas que expõem pacientes) ----------
+
+def limite_diario(caller, rota: str, maximo: int) -> None:
+    """Conta as chamadas do usuário no dia; passou de `maximo`, responde 429.
+    Evita que uma conta (ou um token roubado) percorra pacientes em massa pela busca por CPF."""
+    dia = tempo.day_key(tempo.now())
+    try:
+        _painel().update_item(
+            Key={"PK": f"LIMITE#{dia}", "SK": f"{caller.sub}#{rota}"},
+            UpdateExpression="ADD n :um SET expiraEm = :fim",
+            ConditionExpression="attribute_not_exists(n) OR n < :max",
+            # o contador some sozinho dois dias depois
+            ExpressionAttributeValues={":um": 1, ":max": maximo, ":fim": tempo.expira_em(tempo.now(), anos=0) + 2 * 86400},
+        )
+    except _client.exceptions.ConditionalCheckFailedException as exc:
+        log.warning(json.dumps({"evento": "limite_diario", "rota": rota, "usuario": caller.sub}))
+        raise HttpError(429, f"Limite diário de consultas atingido ({maximo}). Tente amanhã ou fale com a administração.") from exc

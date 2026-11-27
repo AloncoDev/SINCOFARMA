@@ -242,3 +242,18 @@ def test_lista_so_para_quem_ve_atendimentos(aws):
     assert list_day(aws, groups="[papel:admin]")["statusCode"] == 403
     assert list_day(aws, groups="[papel:medico]")["statusCode"] == 403
     assert list_day(aws, groups="[papel:farmaceutico]")["statusCode"] == 403  # sem farmácia
+
+
+def test_red_flag_nao_some_de_risco_alto_ou_sinal_de_alerta(aws):
+    clin = copy.deepcopy(VALID_CLINICAL)
+    clin["redFlags"] = ["Dor torácica"]
+    alerta = body_of(post_visit(aws, clin))
+    assert patch(aws, alerta["id"], {"urgent": False})["statusCode"] == 422
+    clin = copy.deepcopy(VALID_CLINICAL)
+    clin["risk"] = "laranja"
+    laranja = body_of(post_visit(aws, clin))
+    assert patch(aws, laranja["id"], {"urgent": False})["statusCode"] == 422
+    # risco baixo, sem sinais: a farmacêutica pode marcar e desmarcar
+    comum = body_of(post_visit(aws))
+    assert body_of(patch(aws, comum["id"], {"urgent": True}))["urgent"] is True
+    assert body_of(patch(aws, comum["id"], {"urgent": False}))["urgent"] is False

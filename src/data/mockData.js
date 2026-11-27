@@ -159,6 +159,7 @@ export const referralSeeds = [
 //   mix: [resolvidos, encaminhados, acompanhamento] · urgent: fração com Red Flag · minutes: triagem média
 export const demoPharmacies = [
   { id: "demo", name: unit, monthGoal: 525, triageGoalMin: 10, pharmacists: { active: 2, pending: 0 },
+    cnpj: "11222333000181", address: "SCS Quadra 1, Bloco A, Loja 10, Asa Sul, Brasília-DF", phone: "6133330000",
     profile: { volume: 470, history: 30, mix: [0.74, 0.16, 0.1], urgent: 0.045, minutes: 8 } },
   { id: "taguatinga-centro", name: "Farmácia Popular do Servidor — Taguatinga Centro / RA III", monthGoal: 420, triageGoalMin: 10,
     pharmacists: { active: 3, pending: 1 }, profile: { volume: 330, history: 30, mix: [0.75, 0.15, 0.1], urgent: 0.034, minutes: 9.2 } },

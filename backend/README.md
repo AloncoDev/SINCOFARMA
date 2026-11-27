@@ -46,9 +46,11 @@ tests/                         pytest com DynamoDB e Cognito simulados
 | GET | `/me/dados` | qualquer perfil: tudo o que o painel guarda sobre quem pede, para baixar (sem dados de paciente) |
 | GET | `/me/pedidos` | qualquer perfil: os próprios pedidos de privacidade |
 | POST | `/me/pedidos` | qualquer perfil: `{ type: correcao\|exclusao, details }` (um aberto de cada tipo por vez) |
+| GET | `/me/termos` | qualquer perfil: última versão dos termos de uso aceita (`{ accepted: { version, acceptedAt } \| null }`) |
+| POST | `/me/termos` | qualquer perfil: `{ version: aaaa-mm-dd }` registra o aceite (fica na auditoria) |
 | GET | `/lgpd/pedidos[?status=]` | administração: pedidos de todos (`aberto`, `concluido`, `recusado`) |
 | PATCH | `/lgpd/pedidos/{id}` | administração: `{ status: concluido\|recusado, response }`; concluir exclusão anonimiza a conta |
-| POST | `/lgpd/pacientes` | administração: `{ cpf }` (no corpo, nunca na URL): todos os atendimentos e encaminhamentos do paciente |
+| POST | `/lgpd/pacientes` | administração: `{ cpf, channel, reference }` (CPF no corpo, nunca na URL; canal e referência do pedido do paciente obrigatórios): todos os atendimentos e encaminhamentos do paciente. A auditoria guarda o pedido e o HMAC do CPF (chave KMS `ChaveAuditoria`), nunca o CPF |
 
 Todas exigem o **token de acesso** do Cognito no cabeçalho `Authorization`.
 
@@ -169,12 +171,23 @@ No front (Vercel → Settings → Environment Variables), com as saídas do stac
 VITE_API_URL=<ApiUrl>
 VITE_COGNITO_REGION=<Region>
 VITE_COGNITO_CLIENT_ID=<UserPoolClientId>
+VITE_COGNITO_USER_POOL_ID=<UserPoolId>   # liga o login por SRP
 ```
 
 ## Decisões e limites atuais
 
-- Login por `USER_PASSWORD_AUTH` (a senha vai por TLS direto ao Cognito). Tokens de 15 min, sessão de até 12 h,
-  revogação ligada; refresh token só no `sessionStorage`.
+- Login por SRP (`USER_SRP_AUTH`): a senha não sai do navegador. Precisa de `VITE_COGNITO_USER_POOL_ID` no front;
+  sem ela, o front cai em `USER_PASSWORD_AUTH` (senha por TLS direto ao Cognito). Depois que o front com o pool ID
+  estiver no ar, tire `ALLOW_USER_PASSWORD_AUTH` do `UserPoolClient` no template e faça novo deploy.
+  Tokens de 15 min, sessão de até 12 h, revogação ligada; refresh token só no `sessionStorage`.
+- Prazo de guarda: fichas, encaminhamentos, guias, índice do paciente e as trilhas de auditoria deles levam
+  `expiraEm` (epoch) = registro + 20 anos (Lei 13.787/2018) e o TTL do DynamoDB apaga sozinho. Contadores, perfis e
+  o registro geral de auditoria (sem pacientes) ficam. Itens gravados antes do TTL não têm `expiraEm`:
+  `scripts/marcar_expiracao.py` completa.
+- Menor de 18 anos: o atendimento exige o responsável legal (nome, CPF e parentesco), que vai na ficha, na guia
+  (CPF mascarado) e na declaração.
+- Encaminhar exige `patientInformed: true` (o farmacêutico confirma que explicou ao paciente o destino e que a guia
+  pode ser consultada pela rede).
 - MFA obrigatório por app autenticador (TOTP). No primeiro login o painel mostra o QR code para cadastrar o app;
   nos seguintes, pede o código de 6 dígitos. Se o farmacêutico perder o celular, o gestor remove o MFA do usuário
   no Cognito (`admin-set-user-mfa-preference`) e o cadastro do app é refeito no próximo login.

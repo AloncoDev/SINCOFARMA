@@ -3,8 +3,10 @@
 // teste não tem câmera); a administração cadastra unidades de saúde.
 import QRCode from "qrcode";
 import { test, expect } from "@playwright/test";
+import { termosAceitos } from "./termos";
 
 async function entrar(page) {
+  await termosAceitos(page);
   await page.goto("/login");
   await page.locator("#identifier").fill("CRF 12345/DF");
   await page.locator("#password").fill("12345678");
@@ -23,6 +25,10 @@ test("farmácia encaminha à unidade de saúde, imprime a guia e acha pelo códi
   await modal.locator("#ref-unit").click();
   await page.getByRole("option", { name: /UBS 5 Taguatinga/ }).click();
   await modal.locator("#ref-reason").fill("Cefaleia recorrente há 3 semanas; avaliar com clínico geral.");
+  // sem confirmar que o paciente foi informado, não encaminha
+  await modal.getByRole("button", { name: "Encaminhar e gerar guia" }).click();
+  await expect(modal.getByText("Confirme que o paciente foi informado.")).toBeVisible();
+  await modal.getByRole("checkbox").check();
   await modal.getByRole("button", { name: "Encaminhar e gerar guia" }).click();
 
   // abre direto a guia para imprimir

@@ -100,3 +100,10 @@
 @media print {
   .ref-steps { box-shadow: none !important; border: 1px solid #d1d5db !important; }
 }
+
+@media (max-width: 640px) {
+  /* "Voltar" em cima; guia e imprimir ocupam a largura */
+  .ficha-top { flex-direction: column; align-items: stretch; }
+  .ref-top-actions { width: 100%; }
+  .ref-top-actions .btn { flex: 1 1 auto; justify-content: center; }
+}
