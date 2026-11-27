@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { SPRING } from "../../utils/motion";
 import Select from "../../components/Select";
 import { Field, FieldGroup, Section, ChipField } from "./fields";
-import { RISK_LEVELS, RED_FLAGS, CODE_SUGGESTIONS, OBS_LIMIT, RANGES } from "./constants";
-import { rangeMsg, paError } from "./validation";
+import { RISK_LEVELS, RED_FLAGS, CODE_SUGGESTIONS, OBS_LIMIT, GUIDANCE_LIMIT, RANGES, GUARDIAN_RELATIONS } from "./constants";
+import { rangeMsg, paError, isMinor } from "./validation";
 
 export function IdentificacaoSection({ form, on, bad }) {
   return (
@@ -38,6 +38,38 @@ export function IdentificacaoSection({ form, on, bad }) {
             onChange={on.masked("telefone", "(##) #####-####")} />
         </Field>
       </div>
+      <AnimatePresence initial={false}>
+        {isMinor(form) && (
+          <motion.div
+            className="tg-guardian"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <p className="tg-guardian-note" role="note">
+              <b>Paciente menor de 18 anos.</b> Atenda só com o responsável legal presente e registre quem é.
+            </p>
+            <div className="tg-grid tg-grid--3">
+              <Field label="Nome do responsável" invalid={bad("respNome")} error="Informe nome e sobrenome do responsável.">
+                <input autoComplete="off" placeholder="Nome e sobrenome" value={form.respNome} onChange={on.text("respNome")} />
+              </Field>
+              <Field label="CPF do responsável" invalid={bad("respCpf")} error="CPF inválido ou igual ao do paciente.">
+                <input inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={form.respCpf}
+                  onChange={on.masked("respCpf", "###.###.###-##")} />
+              </Field>
+              <Field label="Parentesco" invalid={bad("respParentesco")} error="Selecione o parentesco.">
+                <Select
+                  className="sel--bare"
+                  placeholder="Selecione uma opção"
+                  value={form.respParentesco}
+                  onChange={(v) => on.text("respParentesco")({ target: { value: v } })}
+                  options={GUARDIAN_RELATIONS}
+                />
+              </Field>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Section>
   );
 }
@@ -50,7 +82,8 @@ export function QueixaSection({ form, on, bad }) {
           <input placeholder="Descreva a queixa relatada pelo paciente..." value={form.queixa} onChange={on.text("queixa")} />
         </Field>
         <div className="tg-grid tg-grid--2">
-          <Field label="CID / CIAP-2">
+          {/* CIAP-2 classifica o motivo da procura na atenção primária; diagnóstico (CID) é do médico */}
+          <Field label="Motivo (CIAP-2) · opcional">
             <input list="tg-codes" placeholder="Ex: CIAP-2 A03" value={form.codigo} onChange={on.text("codigo")} />
             <datalist id="tg-codes">
               {CODE_SUGGESTIONS.map((c) => <option key={c} value={c} />)}
@@ -126,7 +159,12 @@ export function SinaisSection({ form, on, bad, imc }) {
 export function RiscoSection({ form, on, bad, toggleFlag }) {
   const invalid = bad("risco");
   return (
-    <Section id="tg-triagem" n={5} title="Triagem / classificação de risco" subtitle="Selecione a classificação observada">
+    <Section
+      id="tg-triagem"
+      n={5}
+      title="Classificação de risco"
+      subtitle="Apoio ao acolhimento farmacêutico para decidir a urgência do encaminhamento. Não substitui a avaliação médica."
+    >
       <fieldset className="tg-risk" aria-describedby={invalid ? "tg-risk-err" : undefined}>
         <legend className="sr-only">Classificação de risco</legend>
         {RISK_LEVELS.map((r) => (
@@ -175,8 +213,13 @@ export function RiscoSection({ form, on, bad, toggleFlag }) {
 
 export function ObservacaoSection({ form, on }) {
   return (
-    <Section id="tg-observacao" n={6} title="Comentário / observação" subtitle="Registro livre do farmacêutico">
-      <Field label="Observações do atendimento">
+    <Section id="tg-observacao" n={6} title="Orientação e observação" subtitle="O que foi orientado ao paciente e registro interno do farmacêutico">
+      <Field label="Orientação farmacêutica (vai na declaração entregue ao paciente)">
+        <textarea rows={3} maxLength={GUIDANCE_LIMIT} value={form.orientacao} onChange={on.text("orientacao")}
+          placeholder="Ex.: medir a pressão de novo em 7 dias; procurar a UBS se a dor piorar..." />
+      </Field>
+      <p className="tg-counter" aria-live="polite">{form.orientacao.length} / {GUIDANCE_LIMIT} caracteres</p>
+      <Field label="Observações internas (não vão para o paciente)">
         <textarea rows={3} maxLength={OBS_LIMIT} value={form.observacoes} onChange={on.text("observacoes")}
           placeholder="Digite informações adicionais, evolução ou observações..." />
       </Field>

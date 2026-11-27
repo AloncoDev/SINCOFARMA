@@ -110,7 +110,7 @@ export default function AcompanhamentoDetalhe() {
                       <span className={`track-avatar track-avatar--${p.role}`}><R.icon size={16} aria-hidden="true" /></span>
                       <div>
                         <strong>{p.name}</strong>
-                        <small>{R.label}{p.role === "farmaceutico" && p.name === v.rt ? " · responsável técnico(a)" : ""}</small>
+                        <small>{R.label}{p.role === "farmaceutico" && p.name === v.rt ? " · fez o atendimento" : ""}</small>
                       </div>
                     </li>
                   );

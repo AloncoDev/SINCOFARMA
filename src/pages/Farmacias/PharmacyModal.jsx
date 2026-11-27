@@ -4,20 +4,12 @@ import { X, Store, AlertCircle } from "lucide-react";
 import { repository } from "../../data";
 import { useClinic } from "../../contexts/clinic";
 import { useFocusTrap, useModalBackdrop } from "../../hooks/useFocusTrap";
+import { slug } from "../../utils/slug";
+import { applyMask, digits, isValidCnpj, maskCnpj } from "../../utils/cpf";
 
-/** "Drogaria Vida — Ceilândia Norte" -> "drogaria-vida-ceilandia-norte" (até 40 caracteres) */
-function slug(text) {
-  return text
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40)
-    .replace(/-+$/, "");
-}
+const maskPhone = (v) => applyMask(v, digits(v).length > 10 ? "(##) #####-####" : "(##) ####-#####");
 
-/** Cadastro (unit = null) ou edição de nome e metas de uma farmácia. */
+/** Cadastro (unit = null) ou edição de nome, metas e identificação (CNPJ, endereço, telefone) de uma farmácia. */
 export default function PharmacyModal({ open, unit, taken, onClose, onSaved }) {
   return (
     <AnimatePresence>
@@ -34,6 +26,10 @@ function PharmacyDialog({ unit, taken, onClose, onSaved }) {
     id: unit?.id ?? "",
     monthGoal: String(unit?.monthGoal ?? 300),
     triageGoalMin: String(unit?.triageGoalMin ?? 10),
+    // vão na Declaração de Serviço Farmacêutico entregue ao paciente
+    cnpj: maskCnpj(unit?.cnpj ?? ""),
+    address: unit?.address ?? "",
+    phone: maskPhone(unit?.phone ?? ""),
   }));
   // o código acompanha o nome até a pessoa mexer nele
   const [idTouched, setIdTouched] = useState(false);
@@ -58,6 +54,9 @@ function PharmacyDialog({ unit, taken, onClose, onSaved }) {
     }
     if (!Number.isInteger(month) || month < 0 || month > 100000) e.monthGoal = "Número inteiro de 0 a 100.000.";
     if (!Number.isInteger(triage) || triage < 1 || triage > 120) e.triageGoalMin = "Número inteiro de 1 a 120.";
+    if (form.cnpj && !isValidCnpj(form.cnpj)) e.cnpj = "CNPJ inválido. Confira os 14 dígitos.";
+    if (form.phone && ![10, 11].includes(digits(form.phone).length)) e.phone = "Telefone com DDD.";
+    if (form.address.trim().length > 200) e.address = "Use no máximo 200 caracteres.";
     setErrors(e);
     return !Object.keys(e).length;
   }
@@ -65,9 +64,16 @@ function PharmacyDialog({ unit, taken, onClose, onSaved }) {
   async function submit(e) {
     e.preventDefault();
     if (!check()) return;
-    const data = { name: form.name.trim(), monthGoal: Number(form.monthGoal), triageGoalMin: Number(form.triageGoalMin) };
+    const data = {
+      name: form.name.trim(),
+      monthGoal: Number(form.monthGoal),
+      triageGoalMin: Number(form.triageGoalMin),
+      cnpj: digits(form.cnpj),
+      address: form.address.trim(),
+      phone: digits(form.phone),
+    };
     // na edição manda só o que mudou
-    const change = creating ? { id: form.id, ...data } : Object.fromEntries(Object.entries(data).filter(([k, v]) => unit[k] !== v));
+    const change = creating ? { id: form.id, ...data } : Object.fromEntries(Object.entries(data).filter(([k, v]) => (unit[k] ?? "") !== v));
     if (!creating && !Object.keys(change).length) return onClose();
     setBusy(true);
     try {
@@ -133,6 +139,17 @@ function PharmacyDialog({ unit, taken, onClose, onSaved }) {
               <input value={form.triageGoalMin} onChange={(e) => setForm((f) => ({ ...f, triageGoalMin: e.target.value.replace(/\D/g, "") }))} inputMode="numeric" />
             </Field>
           </div>
+          <div className="form-grid">
+            <Field label="CNPJ" error={errors.cnpj}>
+              <input value={form.cnpj} onChange={(e) => setForm((f) => ({ ...f, cnpj: maskCnpj(e.target.value) }))} inputMode="numeric" className="mono" placeholder="00.000.000/0000-00" autoComplete="off" />
+            </Field>
+            <Field label="TELEFONE" error={errors.phone}>
+              <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: maskPhone(e.target.value) }))} inputMode="numeric" type="tel" placeholder="(61) 3333-0000" autoComplete="off" />
+            </Field>
+          </div>
+          <Field label="ENDEREÇO" error={errors.address} hint="CNPJ, telefone e endereço saem na declaração entregue ao paciente (RDC 44/2009).">
+            <input value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))} maxLength={200} placeholder="Quadra, bloco, loja, bairro, cidade" autoComplete="off" />
+          </Field>
         </div>
 
         <footer className="modal-foot">

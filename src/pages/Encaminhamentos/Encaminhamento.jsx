@@ -70,10 +70,9 @@ function Detalhe({ data: r, onChange }) {
   const vitals = vitalsOf(c.vitals);
   const years = age(p.birthDate);
   const isOpen = REFERRAL_OPEN.includes(r.status);
-  // o servidor também confere: médico ligado a uma unidade de saúde responde (mesmo que o paciente
-  // tenha ido a outra unidade com a guia); a farmácia que enviou cancela
-  const canAnswer =
-    isOpen && pode(user, "responder_encaminhamento") && !pode(user, "criar_encaminhamento") && (!!user?.healthUnit || r.mine !== false);
+  // o servidor também confere: responde a unidade de saúde de destino (`mine`); outra unidade só consulta
+  // a guia; a farmácia que enviou cancela
+  const canAnswer = isOpen && pode(user, "responder_encaminhamento") && !pode(user, "criar_encaminhamento") && r.mine !== false;
   const destination = r.healthUnit?.name ?? r.doctor?.name;
   const canCancel = isOpen && pode(user, "criar_encaminhamento");
 
@@ -144,6 +143,7 @@ function Detalhe({ data: r, onChange }) {
             <div><dt>Nascimento</dt><dd>{brDate(p.birthDate) ?? "—"}{years != null && ` (${years} anos)`}</dd></div>
             <div><dt>Sexo</dt><dd>{SEX[p.sex] ?? "—"}</dd></div>
             <div><dt>Telefone</dt><dd>{phone(p.phone) ?? "—"}</dd></div>
+            {p.guardian && <div><dt>Responsável legal</dt><dd>{p.guardian.name} · CPF {p.guardian.cpf}</dd></div>}
           </dl>
         </SpotlightCard>
 
@@ -151,7 +151,7 @@ function Detalhe({ data: r, onChange }) {
           <h2><MessageSquareText size={17} /> Queixa principal</h2>
           <p className="ficha-text">{c.complaint?.text ?? "—"}</p>
           <dl className="ficha-dl">
-            {c.complaint?.code && <div><dt>CID / CIAP</dt><dd>{c.complaint.code}</dd></div>}
+            {c.complaint?.code && <div><dt>CIAP-2</dt><dd>{c.complaint.code}</dd></div>}
             {c.complaint?.onset && <div><dt>Início</dt><dd>{brDate(c.complaint.onset)}</dd></div>}
           </dl>
         </SpotlightCard>
@@ -230,6 +230,7 @@ function Timeline({ r }) {
 
 /** Resposta do médico, ou o formulário para ele responder, ou o cancelamento pela farmácia. */
 function Resposta({ r, canAnswer, canCancel, onChange }) {
+  const destination = r.healthUnit?.name ?? r.doctor?.name ?? "A unidade de saúde";
   const { notify } = useClinic();
   const [text, setText] = useState("");
   const [error, setError] = useState(null);
@@ -309,8 +310,8 @@ function Resposta({ r, canAnswer, canCancel, onChange }) {
         {r.status === "cancelled"
           ? "A farmácia cancelou este encaminhamento antes da resposta do médico."
           : r.status === "read"
-            ? `${r.doctor?.name} já abriu o caso. A resposta aparece aqui assim que for enviada.`
-            : `${r.doctor?.name} ainda não abriu o caso.`}
+            ? `${r.readBy?.name ? `${r.readBy.name} (${r.readBy.unit ?? destination})` : destination} já abriu o caso. A resposta aparece aqui assim que for enviada.`
+            : `${destination} ainda não abriu o caso.`}
       </p>
       {canCancel && (
         <div className="ref-actions no-print">

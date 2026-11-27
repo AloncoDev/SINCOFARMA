@@ -124,3 +124,15 @@
   .guia-block, .guia-grid { break-inside: avoid; }
   * { animation: none !important; transition: none !important; }
 }
+
+@media (max-width: 640px) {
+  .guia-sheet { padding: 20px 16px; gap: 14px; }
+  .guia-head { flex-wrap: wrap; gap: 10px 14px; }
+  .guia-title { flex: 1 1 100%; order: 3; }
+  .guia-title h1 { font-size: 17px; }
+  .guia-code { justify-items: start; }
+  .guia-code strong { font-size: 18px; }
+  .guia-qr img { width: 160px; height: 160px; }
+  .guia-actions { flex-wrap: wrap; }
+  .guia-actions .btn { flex: 1 1 100%; justify-content: center; }
+}

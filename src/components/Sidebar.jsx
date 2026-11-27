@@ -21,7 +21,6 @@ import { initials } from "../utils/initials";
 import { EASE, SPRING } from "../utils/motion";
 import { useFocusTrap } from "../hooks/useFocusTrap";
 import MotionToggle from "./MotionToggle";
-import { isReady } from "../config/app";
 import { PAPEIS, podeRota } from "../services/permissoes";
 
 const MOBILE = "(max-width: 1024px)";
@@ -150,8 +149,7 @@ export default function Sidebar({ open, onClose, user, onSignOut }) {
                           )}
                           <Icon size={18} />
                           <span className="sb-label">{label}</span>
-                          {!isReady(to) && <span className="sb-soon">em breve</span>}
-                          {isReady(to) && badge > 0 && (
+                          {badge > 0 && (
                             <motion.span
                               key={badge}
                               className={`sb-badge${badgeTone ? ` sb-badge--${badgeTone}` : ""}`}

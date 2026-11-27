@@ -43,7 +43,10 @@
 //   POST  /me/pedidos              { type: correcao|exclusao, details } -> pedido
 //   GET   /lgpd/pedidos[?status=]  -> { requests }            (administração)
 //   PATCH /lgpd/pedidos/:id        { status: concluido|recusado, response } -> pedido (concluir exclusão anonimiza a conta)
-//   POST  /lgpd/pacientes          { cpf } -> dados do paciente (administração; CPF no corpo, nunca na URL)
+//   POST  /lgpd/pacientes          { cpf, channel, reference } -> dados do paciente (administração; CPF no corpo,
+//                                  nunca na URL; canal e referência do pedido do paciente vão para a auditoria)
+//   GET   /me/termos               -> { accepted: { version, acceptedAt } | null }
+//   POST  /me/termos               { version } -> registra o aceite dos termos de uso
 import { api } from "../services/api";
 
 export const apiRepository = {
@@ -81,7 +84,9 @@ export const apiRepository = {
   listPrivacyRequests: (status) => api(status ? `/lgpd/pedidos?status=${encodeURIComponent(status)}` : "/lgpd/pedidos").then((r) => r.requests),
   answerPrivacyRequest: (id, change) =>
     api(`/lgpd/pedidos/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(change), timeout: 60000 }),
-  exportPatient: (cpf) => api("/lgpd/pacientes", { method: "POST", body: JSON.stringify({ cpf }), timeout: 30000 }),
+  exportPatient: (cpf, request) => api("/lgpd/pacientes", { method: "POST", body: JSON.stringify({ cpf, ...request }), timeout: 30000 }),
+  getTermsAcceptance: () => api("/me/termos").then((r) => r.accepted),
+  acceptTerms: (version) => api("/me/termos", { method: "POST", body: JSON.stringify({ version }) }),
   reset: () => Promise.reject(new Error("Indisponível com backend real.")),
   clear: () => {},
 };

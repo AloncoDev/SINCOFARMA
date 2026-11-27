@@ -21,7 +21,7 @@ import os
 import re
 import secrets
 
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 
 from . import auditoria
 from . import repositorio as repo
@@ -89,6 +89,12 @@ def _summary(ref: dict) -> dict:
     }
 
 
+def _guardian(g: dict | None) -> dict | None:
+    if not g:
+        return None
+    return {"name": g.get("name"), "relation": g.get("relation"), "cpf": anonymize_cpf(g.get("cpf"))}
+
+
 def _keys(ref: dict) -> list[dict]:
     """Completo, caixa de quem recebe (unidade de saúde ou, nos antigos, o médico) e lista da farmácia."""
     sk = f"REF#{ref['createdAt']}#{ref['id']}"
@@ -111,6 +117,7 @@ def _audit(ref: dict, caller, action: str, changes: dict) -> dict:
         "unit": ref["unit"],
         "referral": ref["id"],
         "changes": changes,
+        "expiraEm": tempo.expira_em(at),
     }
     repo.log.info(json.dumps({"evento": "auditoria", "acao": action, "encaminhamento": ref["id"], "usuario": caller.sub, "unidade": ref["unit"]}))
     return {"Put": {"TableName": os.environ["TABELA_CLINICO"], "Item": item}}
@@ -123,7 +130,7 @@ def _target(ref: dict) -> dict:
 
 def public(ref: dict, caller) -> dict:
     """Encaminhamento completo para quem pode vê-lo (sem chaves internas)."""
-    out = {k: v for k, v in ref.items() if k not in ("PK", "SK")}
+    out = {k: v for k, v in ref.items() if k not in ("PK", "SK", "expiraEm")}
     doctor = ref.get("doctor")
     out["doctor"] = {"id": doctor["id"], "name": doctor["name"]} if doctor else None
     out["mine"] = caller.sub == ref["from"]["sub"] or (
@@ -172,6 +179,8 @@ def create(caller, data: dict) -> dict:
         "urgent": data["priority"] == "urgente" or bool(visit.get("urgent")),
         "reason": data["reason"],
         "from": {"sub": caller.sub, "name": sender["name"], "crf": sender.get("crf")},
+        # quem fez o atendimento (vai na guia como farmacêutico responsável)
+        "attendedBy": {"name": visit.get("rt") or sender["name"], "crf": visit.get("rtCrf") or sender.get("crf")},
         "healthUnit": {"id": health["id"], "name": health["name"], "kind": health["kind"]},
         # quem respondeu (preenchido na resposta)
         "doctor": None,
@@ -183,15 +192,40 @@ def create(caller, data: dict) -> dict:
             "phone": patient.get("phone"),
             "cns": patient.get("cns"),
             "cpf": anonymize_cpf(patient.get("cpf")),
+            # menor de idade: quem o acompanha (CPF mascarado)
+            "guardian": _guardian(record.get("guardian")),
         },
+        # o farmacêutico confirmou que o paciente sabe para onde vai e que a guia pode ser
+        # consultada pelas unidades de saúde da rede
+        "patientInformed": True,
         "clinical": {k: record.get(k) for k in ("complaint", "history", "vitals", "risk", "redFlags", "notes")},
         "response": None,
         "answeredAt": None,
     }
     table = os.environ["TABELA_CLINICO"]
+    painel = os.environ["TABELA_PAINEL"]
+    status_items = []
+    if visit.get("status") != "referred":
+        day, month = tempo.day_key(at_visit), tempo.month_key(at_visit)
+        deltas = {visit["status"]: -1, "referred": 1}
+        status_items = [
+            {"Update": {
+                "TableName": painel,
+                "Key": {"PK": repo.pk_day(caller.unit_id, day), "SK": f"VISIT#{visit_id}"},
+                "UpdateExpression": "SET #st = :ref, updatedAt = :t, updatedBy = :by",
+                "ConditionExpression": "#st = :old",
+                "ExpressionAttributeNames": {"#st": "status"},
+                "ExpressionAttributeValues": {":ref": "referred", ":old": visit["status"], ":t": now.isoformat(), ":by": caller.sub},
+            }},
+            repo._counter_update(painel, repo.pk_day(caller.unit_id, day), deltas),
+            repo._counter_update(painel, repo.pk_month(caller.unit_id, month), deltas),
+            # na trilha do atendimento: o desfecho mudou por causa do encaminhamento
+            repo._audit(os.environ["TABELA_CLINICO"], visit_id, caller, "update", {"status": [visit["status"], "referred"]}),
+        ]
+    ref["expiraEm"] = tempo.expira_em(ref["createdAt"])
     for attempt in range(3):
         full, inbox, unit = _keys(ref)
-        summary = _summary(ref)
+        summary = {**_summary(ref), "expiraEm": ref["expiraEm"]}
         try:
             repo._client.transact_write_items(
                 TransactItems=[
@@ -199,11 +233,12 @@ def create(caller, data: dict) -> dict:
                     {"Put": {"TableName": table, "Item": {**inbox, **summary}}},
                     {"Put": {"TableName": table, "Item": {**unit, **summary}}},
                     # o código da guia é único: se já existir (raríssimo), sorteia outro
-                    {"Put": {"TableName": table, "Item": {"PK": f"GUIA#{ref['code']}", "SK": "REF", "refId": ref["id"]},
+                    {"Put": {"TableName": table, "Item": {"PK": f"GUIA#{ref['code']}", "SK": "REF", "refId": ref["id"], "expiraEm": ref["expiraEm"]},
                              "ConditionExpression": "attribute_not_exists(PK)"}},
                     _audit(ref, caller, "referral_create", {"healthUnit": health["id"], "priority": ref["priority"]}),
                     repo.patient_index(patient["cpf"], "REF", ref["id"], ref["unit"], ref["createdAt"]),
                     auditoria.put("referral_create", caller, unit=ref["unit"], target=_target(ref), details={"priority": ref["priority"]}),
+                    *status_items,
                 ]
             )
             break
@@ -218,9 +253,10 @@ def create(caller, data: dict) -> dict:
 
 def _load_visible(caller, ref_id: str) -> dict:
     ref = _clinico().get_item(Key={"PK": f"REF#{ref_id}", "SK": "REF"}, ConsistentRead=True).get("Item")
-    # médico: de qualquer unidade (o paciente pode chegar com a guia a outra unidade); farmácia: só as dela
+    # médico ligado a uma unidade de saúde: de qualquer unidade (o paciente pode chegar com a guia a outra
+    # unidade; os antigos, endereçados a ele, também); farmácia: só as dela
     visible = ref and (
-        caller.pode("responder_encaminhamento")
+        (caller.pode("responder_encaminhamento") and (caller.health_unit or _for_my_unit(ref, caller)))
         or (caller.pode("criar_encaminhamento") and ref["unit"] == caller.unit_id)
     )
     if not visible:
@@ -241,8 +277,9 @@ def _set_status(ref: dict, caller, new: dict, action: str) -> dict:
         sets.append(f"#f{i} = :v{i}")
     update = "SET " + ", ".join(sets)
     summary_fields = {k: v for k, v in new.items() if k in ("status", "statusAt")}
-    if "doctor" in new:  # quem respondeu aparece nas listas
+    if "doctor" in new:  # quem respondeu aparece nas listas (o id separa homônimos)
         summary_fields["doctorName"] = new["doctor"]["name"]
+        summary_fields["doctorId"] = new["doctor"]["id"]
     s_names = {f"#s{i}": k for i, k in enumerate(summary_fields)} | {"#st": "status"}
     s_values = {f":s{i}": v for i, v in enumerate(summary_fields.values())} | {":old": ref["status"]}
     s_update = "SET " + ", ".join(f"#s{i} = :s{i}" for i in range(len(summary_fields)))
@@ -277,11 +314,13 @@ def _who(caller) -> dict:
 def open_one(caller, ref_id: str) -> dict:
     """Detalhe; a primeira leitura por um médico marca como lido (e registra quem leu)."""
     ref = _load_visible(caller, ref_id)
-    if ref["status"] == "sent" and caller.pode("responder_encaminhamento"):
-        ref = _set_status(ref, caller, {"status": "read", "statusAt": tempo.now().isoformat(), "readBy": _who(caller)}, "referral_read")
-    elif caller.pode("responder_encaminhamento") and not _for_my_unit(ref, caller):
-        # médico de outra unidade abrindo (achou pela guia): fica no registro geral
-        auditoria.record("referral_open", caller, unit=ref["unit"], target=_target(ref))
+    doctor = caller.pode("responder_encaminhamento")
+    if ref["status"] == "sent" and doctor and _for_my_unit(ref, caller):
+        # primeira leitura pela unidade de destino (o registro da leitura já vai na trilha)
+        return public(_set_status(ref, caller, {"status": "read", "statusAt": tempo.now().isoformat(), "readBy": _who(caller)}, "referral_read"), caller)
+    # toda abertura da ficha enviada fica no registro geral (LGPD, art. 37); de outra unidade, com rótulo próprio
+    action = "referral_open" if doctor and not _for_my_unit(ref, caller) else "referral_view"
+    auditoria.record(action, caller, unit=ref["unit"], target=_target(ref))
     return public(ref, caller)
 
 
@@ -289,9 +328,9 @@ def change(caller, ref_id: str, data: dict) -> dict:
     ref = _load_visible(caller, ref_id)
     status = data["status"]
     if status in ("answered", "declined"):
-        # qualquer médico ligado a uma unidade de saúde (o paciente pode ter ido a outra unidade)
-        if not caller.pode("responder_encaminhamento") or not (caller.health_unit or _for_my_unit(ref, caller)):
-            raise HttpError(403, "Só médicos ligados a uma unidade de saúde respondem encaminhamentos.")
+        # quem responde é a unidade de destino (outra unidade só consulta a guia)
+        if not caller.pode("responder_encaminhamento") or not _for_my_unit(ref, caller):
+            raise HttpError(403, "Só os médicos da unidade de saúde de destino respondem este encaminhamento.")
     elif not (caller.pode("criar_encaminhamento") and ref["unit"] == caller.unit_id):
         raise HttpError(403, "Só a farmácia que encaminhou pode cancelar.")
     if ref["status"] not in OPEN:
@@ -316,14 +355,21 @@ def list_for(caller, status: str | None = None) -> list[dict]:
         raise HttpError(403, "Seu perfil não tem acesso a esta função.")
     items = []
     for pk in pks:
-        items += _clinico().query(
-            KeyConditionExpression=Key("PK").eq(pk) & Key("SK").begins_with("REF#"),
-            ScanIndexForward=False,
-            Limit=LIST_LIMIT,
-        ).get("Items", [])
+        kwargs = {
+            "KeyConditionExpression": Key("PK").eq(pk) & Key("SK").begins_with("REF#"),
+            "ScanIndexForward": False,
+        }
+        if status:
+            # o filtro vem antes do limite: casos antigos ainda sem resposta não somem da caixa
+            kwargs |= {"FilterExpression": Attr("status").eq(status)}
+        while len(items) < LIST_LIMIT * len(pks):
+            resp = _clinico().query(**kwargs)
+            items += resp.get("Items", [])
+            if "LastEvaluatedKey" not in resp:
+                break
+            kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
     items.sort(key=lambda i: i["SK"], reverse=True)
-    items = [{k: v for k, v in i.items() if k not in ("PK", "SK")} for i in items[:LIST_LIMIT]]
-    return [i for i in items if status is None or i["status"] == status]
+    return [{k: v for k, v in i.items() if k not in ("PK", "SK")} for i in items[:LIST_LIMIT]]
 
 
 def _full(ids: list[str]) -> list[dict]:
@@ -342,6 +388,8 @@ def _full(ids: list[str]) -> list[dict]:
 def search(caller, by: str, value: str) -> list[dict]:
     """Guia pelo código (ENC-XXXX-XXXX) ou pelo CPF do paciente. Médico: de qualquer unidade;
     farmácia: só as dela. A busca fica no registro geral, sem o CPF."""
+    if caller.pode("responder_encaminhamento") and not caller.pode("criar_encaminhamento") and not caller.health_unit:
+        raise HttpError(403, "Sua conta ainda não está ligada a uma unidade de saúde. Procure o administrador.")
     if by == "code":
         item = _clinico().get_item(Key={"PK": f"GUIA#{value}", "SK": "REF"}).get("Item")
         ids = [item["refId"]] if item else []
@@ -352,7 +400,7 @@ def search(caller, by: str, value: str) -> list[dict]:
             Limit=SEARCH_LIMIT,
         )
         ids = [i["SK"].removeprefix("REF#") for i in resp.get("Items", [])]
-    refs = [r for r in _full(ids) if caller.pode("responder_encaminhamento") or r["unit"] == caller.unit_id]
+    refs = [r for r in _full(ids) if (caller.pode("responder_encaminhamento") and caller.health_unit) or r["unit"] == caller.unit_id]
     refs.sort(key=lambda r: r["createdAt"], reverse=True)
     auditoria.record("referral_search", caller, unit=caller.unit_id, target={"type": "search", "label": "código" if by == "code" else "CPF"},
                      details={"by": by, "found": len(refs)})

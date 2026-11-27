@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { GUARDIAN_RELATIONS } from "../NovaTriagem/constants";
 import { motion } from "framer-motion";
-import { ArrowLeft, Printer, TriangleAlert, UserRound, MessageSquareText, Pill, HeartPulse, ShieldAlert, StickyNote, History } from "lucide-react";
+import { ArrowLeft, Printer, TriangleAlert, UserRound, MessageSquareText, Pill, HeartPulse, ShieldAlert, StickyNote, History, FileSignature } from "lucide-react";
 import SpotlightCard from "../../components/SpotlightCard";
 import { repository } from "../../data";
 import { STATUS } from "../../data/catalog";
@@ -9,6 +10,8 @@ import { rise } from "../../utils/motion";
 import { RISK, SEX, phone, cns, brDate, age, dateTime, vitalsOf } from "./clinico";
 import List from "./FichaList";
 import "./Ficha.css";
+
+const RELATION = Object.fromEntries(GUARDIAN_RELATIONS.map((r) => [r.value, r.label]));
 
 /** Ficha completa de um atendimento da farmácia, com histórico e versão para imprimir. */
 export default function Ficha() {
@@ -46,9 +49,14 @@ export default function Ficha() {
     <main className="dash-content ficha">
       <div className="ficha-top no-print">
         <Link to="/" className="link-arrow ficha-back"><ArrowLeft size={14} /> Voltar</Link>
-        <button type="button" className="btn btn--ghost" onClick={() => window.print()}>
-          <Printer size={16} /> Imprimir / PDF
-        </button>
+        <div className="ficha-actions">
+          <Link to={`/ficha/${visit.id}/declaracao`} className="btn btn--primary">
+            <FileSignature size={16} /> Declaração ao paciente
+          </Link>
+          <button type="button" className="btn btn--ghost" onClick={() => window.print()}>
+            <Printer size={16} /> Imprimir / PDF
+          </button>
+        </div>
       </div>
 
       <section className="page-head">
@@ -60,7 +68,7 @@ export default function Ficha() {
           </motion.nav>
           <motion.h1 {...rise(1)}>{p.name ?? visit.name}</motion.h1>
           <motion.p className="hello" {...rise(2)}>
-            Protocolo <b className="mono">{visit.protocol ?? "—"}</b> · {dateTime(visit.at)} · RT {visit.rt || "—"}
+            Protocolo <b className="mono">{visit.protocol ?? "—"}</b> · {dateTime(visit.at)} · Farmacêutico(a) {visit.rt || "—"}
           </motion.p>
         </div>
         <motion.div className="ficha-tags" {...rise(2)}>
@@ -79,6 +87,12 @@ export default function Ficha() {
             <div><dt>Nascimento</dt><dd>{brDate(p.birthDate) ?? "—"}{years != null && ` (${years} anos)`}</dd></div>
             <div><dt>Sexo</dt><dd>{SEX[p.sex] ?? "—"}</dd></div>
             <div><dt>Telefone</dt><dd>{phone(p.phone) ?? "—"}</dd></div>
+            {record.guardian && (
+              <div>
+                <dt>Responsável legal</dt>
+                <dd>{record.guardian.name} ({RELATION[record.guardian.relation] ?? record.guardian.relation})</dd>
+              </div>
+            )}
           </dl>
         </SpotlightCard>
 
@@ -86,7 +100,7 @@ export default function Ficha() {
           <h2><MessageSquareText size={17} /> Queixa principal</h2>
           <p className="ficha-text">{record.complaint?.text ?? visit.complaint}</p>
           <dl className="ficha-dl">
-            {record.complaint?.code && <div><dt>CID / CIAP</dt><dd>{record.complaint.code}</dd></div>}
+            {record.complaint?.code && <div><dt>CIAP-2</dt><dd>{record.complaint.code}</dd></div>}
             {record.complaint?.onset && <div><dt>Início</dt><dd>{brDate(record.complaint.onset)}</dd></div>}
           </dl>
         </SpotlightCard>
@@ -122,8 +136,11 @@ export default function Ficha() {
         </SpotlightCard>
 
         <SpotlightCard index={7} className="ficha-card">
-          <h2><StickyNote size={17} /> Observações</h2>
-          <p className="ficha-text">{record.notes || <span className="muted">Sem observações</span>}</p>
+          <h2><StickyNote size={17} /> Orientação e observações</h2>
+          <dl className="ficha-dl ficha-dl--stack">
+            <div><dt>Orientação ao paciente</dt><dd className="ficha-text">{record.guidance || <span className="muted">Sem orientação</span>}</dd></div>
+            <div><dt>Observações internas</dt><dd className="ficha-text">{record.notes || <span className="muted">Sem observações</span>}</dd></div>
+          </dl>
         </SpotlightCard>
       </div>
 

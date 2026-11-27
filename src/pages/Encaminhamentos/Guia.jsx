@@ -52,6 +52,8 @@ export default function Guia() {
   const years = age(p.birthDate);
   const kind = HEALTH_KINDS[r.healthUnit?.kind];
   const closed = !["sent", "read"].includes(r.status);
+  // guias antigas não têm `attendedBy`: vale quem encaminhou
+  const attended = r.attendedBy ?? r.from ?? {};
 
   return (
     <main className="dash-content guia-page">
@@ -89,7 +91,13 @@ export default function Guia() {
           <dl className="guia-dl">
             <div><dt>Data do encaminhamento</dt><dd>{dateTime(r.createdAt)}</dd></div>
             <div><dt>Código do atendimento</dt><dd className="mono">{r.protocol ?? "—"}</dd></div>
-            <div><dt>Farmacêutico(a) responsável</dt><dd>{r.from?.name}{r.from?.crf && ` · CRF-DF ${r.from.crf}`}</dd></div>
+            <div>
+              <dt>Farmacêutico(a) que atendeu</dt>
+              <dd>{attended.name}{attended.crf && ` · CRF-DF ${attended.crf}`}</dd>
+            </div>
+            {r.from?.name && r.from.name !== attended.name && (
+              <div><dt>Encaminhado por</dt><dd>{r.from.name}{r.from.crf && ` · CRF-DF ${r.from.crf}`}</dd></div>
+            )}
             <div><dt>Farmácia</dt><dd>{r.unitName}</dd></div>
             <div className="guia-dest">
               <dt>Unidade de saúde de destino</dt>
@@ -113,6 +121,7 @@ export default function Guia() {
             <div><dt>Nascimento</dt><dd>{brDate(p.birthDate) ?? "—"}{years != null && ` (${years} anos)`}</dd></div>
             <div><dt>Sexo</dt><dd>{SEX[p.sex] ?? "—"}</dd></div>
             {p.cns && <div><dt>Cartão SUS</dt><dd className="mono">{cns(p.cns)}</dd></div>}
+            {p.guardian && <div><dt>Responsável legal</dt><dd>{p.guardian.name}</dd></div>}
           </dl>
         </section>
 
@@ -126,13 +135,14 @@ export default function Guia() {
         <footer className="guia-foot">
           <div className="guia-sign">
             <span />
-            <small>{r.from?.name}{r.from?.crf && ` · CRF-DF ${r.from.crf}`}</small>
+            <small>{attended.name}{attended.crf && ` · CRF-DF ${attended.crf}`}</small>
             <small>Assinatura e carimbo do(a) farmacêutico(a)</small>
           </div>
           <p>
             Para a unidade de saúde: leia o QR code ou digite o código <b className="mono">{r.code}</b> no painel
-            Sincofarma para ver a ficha completa enviada pela farmácia e registrar a resposta. Documento com dados pessoais
-            de saúde: entregue ao paciente e não deixe à vista.
+            Sincofarma para ver a ficha enviada pela farmácia; a unidade de destino registra a resposta. Para o paciente:
+            qualquer unidade de saúde da rede pode consultar esta guia quando você a apresentar. Documento com dados
+            pessoais de saúde: guarde com você e não deixe à vista.
           </p>
         </footer>
       </article>

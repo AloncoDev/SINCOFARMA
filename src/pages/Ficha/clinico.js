@@ -1,12 +1,12 @@
 // Formatação da ficha clínica: usada pela Ficha do atendimento e pelo Encaminhamento
 // (que mostra a cópia da ficha enviada ao médico).
 import { RISK_LEVELS } from "../NovaTriagem/constants";
+import { digits as onlyDigits } from "../../utils/cpf";
 
 export const RISK = Object.fromEntries(RISK_LEVELS.map((r) => [r.id, r]));
 export const SEX = { F: "Feminino", M: "Masculino" };
 
 // o servidor guarda só os dígitos; aqui volta ao formato de leitura
-const onlyDigits = (v) => String(v ?? "").replace(/\D/g, "");
 export function phone(v) {
   const d = onlyDigits(v);
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;

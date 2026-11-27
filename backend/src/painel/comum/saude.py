@@ -15,9 +15,6 @@ from . import tempo
 from .auth import HEALTH_PREFIX
 from .http import HttpError
 
-KINDS = {"ubs": "UBS", "upa": "UPA", "hospital": "Hospital", "policlinica": "Policlínica", "caps": "CAPS", "outro": "Outro"}
-
-
 def _pool() -> str:
     return os.environ["USER_POOL_ID"]
 

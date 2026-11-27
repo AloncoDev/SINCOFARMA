@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from .http import HttpError
-from .tempo import now, parse_br_date
+from .tempo import age, now, parse_br_date
 
 STATUSES = ("done", "referred", "progress")
 RISKS = ("azul", "verde", "amarelo", "laranja", "vermelho")
@@ -164,6 +164,28 @@ def bmi(weight: Decimal | None, height_cm: Decimal | None) -> Decimal | None:
     return (weight / (m * m)).quantize(Decimal("0.1"))
 
 
+MAIORIDADE = 18
+# parentesco de quem acompanha o paciente menor de idade
+GUARDIAN_RELATIONS = ("mae", "pai", "avo", "tutor", "outro")
+
+
+def _guardian(clinical: dict, patient_cpf: str, erros: "Erros") -> dict:
+    """Responsável legal presente no atendimento de menor de 18 anos (ECA; LGPD, art. 14)."""
+    g = clinical.get("guardian") if isinstance(clinical.get("guardian"), dict) else {}
+    name = _text(g, "name", erros, "responsavelNome", required=True, min_len=3, max_len=120)
+    if name and len(name.split()) < 2:
+        erros.add("responsavelNome", "Informe nome e sobrenome.")
+    cpf = only_digits(g.get("cpf"))
+    if not is_valid_cpf(cpf):
+        erros.add("responsavelCpf", "CPF do responsável inválido.")
+    elif cpf == patient_cpf:
+        erros.add("responsavelCpf", "Use o CPF do responsável, não o do paciente.")
+    relation = g.get("relation")
+    if relation not in GUARDIAN_RELATIONS:
+        erros.add("responsavelParentesco", "Selecione o parentesco.")
+    return {"name": name, "cpf": cpf, "relation": relation}
+
+
 def validar_criacao(body: dict) -> tuple[dict, dict, int]:
     """Valida o POST /visits. Retorna (resumo, clinico, duracao_segundos).
 
@@ -197,6 +219,10 @@ def validar_criacao(body: dict) -> tuple[dict, dict, int]:
     phone = only_digits(patient.get("phone")) or None
     if phone and len(phone) not in (10, 11):
         erros.add("telefone", "Telefone com DDD (10 ou 11 dígitos).")
+    # menor de idade: só com o responsável legal presente
+    guardian = None
+    if birth and birth <= now().date() and age(birth, now().date()) < MAIORIDADE:
+        guardian = _guardian(clinical, cpf, erros)
 
     # queixa
     complaint_text = _text(complaint, "text", erros, "queixa", required=True, min_len=3, max_len=300)
@@ -228,6 +254,8 @@ def validar_criacao(body: dict) -> tuple[dict, dict, int]:
         erros.add("risco", "Selecione a classificação de risco.")
     red_flags = _str_list(clinical, "redFlags", erros, "redFlags", allowed=RED_FLAGS)
     notes = _text(clinical, "notes", erros, "observacoes", required=False, max_len=500)
+    # orientação dada ao paciente: vai na Declaração de Serviço Farmacêutico (RDC 44/2009)
+    guidance = _text(clinical, "guidance", erros, "orientacao", required=False, max_len=1000)
 
     status = body.get("status", "progress")
     if status not in STATUSES:
@@ -244,12 +272,14 @@ def validar_criacao(body: dict) -> tuple[dict, dict, int]:
 
     clinical_out = {
         "patient": {"cpf": cpf, "cns": cns, "name": name, "birthDate": birth.isoformat(), "sex": sex, "phone": phone},
+        "guardian": guardian,
         "complaint": {"text": complaint_text, "code": code, "onset": onset.isoformat() if onset else None},
         "history": {"allergies": allergies, "comorbidities": comorbidities, "medications": medications},
         "vitals": {**vitals, "bmi": bmi(vitals["weightKg"], vitals["heightCm"])},
         "risk": risk,
         "redFlags": red_flags,
         "notes": notes,
+        "guidance": guidance,
     }
     summary = {
         "name": name,
@@ -305,6 +335,8 @@ def validar_encaminhamento(body: dict) -> dict:
     priority = body.get("priority", "rotina")
     if priority not in PRIORITIES:
         erros.add("priority", "Prioridade inválida (rotina ou urgente).")
+    if body.get("patientInformed") is not True:
+        erros.add("patientInformed", "Confirme que o paciente foi informado do encaminhamento.")
     erros.raise_if_any()
     return {"visitId": visit_id, "healthUnitId": health, "reason": reason, "priority": priority}
 
@@ -441,12 +473,37 @@ def validar_resposta_lgpd(pedido_id: str, body: dict) -> dict:
     return {"status": status, "response": resposta}
 
 
-def validar_cpf_titular(body: dict) -> str:
-    """POST /lgpd/pacientes: o CPF vai no corpo, nunca na URL (que aparece em logs)."""
+LGPD_CANAIS = ("presencial", "email", "telefone", "carta", "outro")
+
+
+def validar_exportacao_paciente(body: dict) -> tuple[str, dict]:
+    """POST /lgpd/pacientes: CPF (no corpo, nunca na URL, que aparece em logs) e o pedido do
+    paciente que justifica a exportação (canal e referência: protocolo, data do e-mail...)."""
+    erros = Erros()
     cpf = only_digits(body.get("cpf"))
     if not is_valid_cpf(cpf):
-        raise HttpError(422, "CPF inválido.", {"fields": {"cpf": "CPF inválido."}})
-    return cpf
+        erros.add("cpf", "CPF inválido.")
+    canal = body.get("channel")
+    if canal not in LGPD_CANAIS:
+        erros.add("channel", "Diga como o paciente fez o pedido.")
+    referencia = _text(body, "reference", erros, "reference", required=True, min_len=3, max_len=200)
+    erros.raise_if_any()
+    return cpf, {"channel": canal, "reference": referencia}
+
+
+TERMOS_VERSAO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def validar_aceite_termos(body: dict) -> str:
+    """POST /me/termos: a versão (data de atualização) dos termos aceitos."""
+    version = body.get("version")
+    if not isinstance(version, str) or not TERMOS_VERSAO.match(version):
+        raise HttpError(422, "Versão dos termos inválida.", {"fields": {"version": "Use aaaa-mm-dd."}})
+    try:
+        date.fromisoformat(version)
+    except ValueError as exc:
+        raise HttpError(422, "Versão dos termos inválida.", {"fields": {"version": "Data inexistente."}}) from exc
+    return version
 
 
 # ---------------------------------------------------------------- farmácias (administração)
@@ -467,8 +524,42 @@ def _goal(body: dict, key: str, erros: Erros, *, required: bool) -> int | None:
     return value
 
 
+def is_valid_cnpj(value) -> bool:
+    d = only_digits(value)
+    if len(d) != 14 or d == d[0] * 14:
+        return False
+
+    def dv(base: str) -> int:
+        pesos = list(range(len(base) - 7, 1, -1)) + list(range(9, 1, -1))
+        r = sum(int(a) * b for a, b in zip(base, pesos)) % 11
+        return 0 if r < 2 else 11 - r
+
+    return dv(d[:12]) == int(d[12]) and dv(d[:13]) == int(d[13])
+
+
+# identificação do estabelecimento na Declaração de Serviço Farmacêutico (RDC 44/2009)
+PHARMACY_ID_FIELDS = ("cnpj", "address", "phone")
+
+
+def _pharmacy_id(body: dict, erros: Erros) -> dict:
+    out = {}
+    if "cnpj" in body:
+        cnpj = only_digits(body.get("cnpj"))
+        if cnpj and not is_valid_cnpj(cnpj):
+            erros.add("cnpj", "CNPJ inválido.")
+        out["cnpj"] = cnpj or ""
+    if "address" in body:
+        out["address"] = _text(body, "address", erros, "address", required=False, max_len=200) or ""
+    if "phone" in body:
+        phone = only_digits(body.get("phone"))
+        if phone and len(phone) not in (10, 11):
+            erros.add("phone", "Telefone com DDD (10 ou 11 dígitos).")
+        out["phone"] = phone or ""
+    return out
+
+
 def validar_farmacia(body: dict) -> dict:
-    """POST /farmacias: código (vira o grupo unidade:<código>), nome e metas."""
+    """POST /farmacias: código (vira o grupo unidade:<código>), nome, metas e identificação (CNPJ, endereço, telefone)."""
     erros = Erros()
     unit = body.get("id")
     if not isinstance(unit, str) or not UNIT_ID.match(unit):
@@ -476,13 +567,14 @@ def validar_farmacia(body: dict) -> dict:
     name = _text(body, "name", erros, "name", required=True, min_len=3, max_len=120)
     month = _goal(body, "monthGoal", erros, required=True)
     triage = _goal(body, "triageGoalMin", erros, required=True)
+    ident = _pharmacy_id(body, erros)
     erros.raise_if_any()
-    return {"id": unit, "name": name, "monthGoal": month, "triageGoalMin": triage}
+    return {"id": unit, "name": name, "monthGoal": month, "triageGoalMin": triage, **{k: ident.get(k, "") for k in PHARMACY_ID_FIELDS}}
 
 
 def validar_mudanca_farmacia(body: dict) -> dict:
-    """PATCH /farmacias/{id}: nome e metas (o código não muda: é o vínculo dos usuários)."""
-    extra = set(body) - {"name", "monthGoal", "triageGoalMin"}
+    """PATCH /farmacias/{id}: nome, metas e identificação (o código não muda: é o vínculo dos usuários)."""
+    extra = set(body) - {"name", "monthGoal", "triageGoalMin", *PHARMACY_ID_FIELDS}
     if extra:
         raise HttpError(422, "Campos não permitidos.", {"fields": {k: "Não editável." for k in sorted(extra)}})
     erros = Erros()
@@ -492,6 +584,7 @@ def validar_mudanca_farmacia(body: dict) -> dict:
     for key in UNIT_GOALS:
         if key in body:
             out[key] = _goal(body, key, erros, required=True)
+    out.update(_pharmacy_id(body, erros))
     erros.raise_if_any()
     if not out:
         raise HttpError(422, "Nada para alterar.")

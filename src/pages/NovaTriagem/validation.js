@@ -1,7 +1,7 @@
 // Regras de validação da triagem (funções puras, cobertas por testes).
 import { parseBrDate, startOfDay } from "../../utils/dates";
 import { isValidCpf } from "../../utils/cpf";
-import { RANGES } from "./constants";
+import { RANGES, MAIORIDADE } from "./constants";
 
 export const toNum = (v) => Number(String(v).replace(",", "."));
 
@@ -18,11 +18,26 @@ export function isValidPastDate(masked, now = new Date()) {
   return !!d && d <= now;
 }
 
+/** Idade completa em `now` (null sem data válida). */
+export function ageOn(birth, now = new Date()) {
+  if (!birth) return null;
+  const before = now.getMonth() < birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate());
+  return now.getFullYear() - birth.getFullYear() - (before ? 1 : 0);
+}
+
+/** Paciente menor de 18 anos (com data de nascimento válida e não futura). */
+export function isMinor(form, now = new Date()) {
+  const birth = parseBrDate(form.nascimento);
+  return !!birth && birth <= now && ageOn(birth, now) < MAIORIDADE;
+}
+
 /** Mapa campo → válido. Campos opcionais valem quando vazios. */
 export function validateTriage(form, now = new Date()) {
   const nascimento = parseBrDate(form.nascimento);
   const inicio = parseBrDate(form.inicioSintomas);
   const today = startOfDay(now);
+  const minor = isMinor(form, now);
+  const respCpf = form.respCpf.replace(/\D/g, "");
   return {
     cpf: isValidCpf(form.cpf),
     // cartão do SUS é opcional; se preenchido, os 15 dígitos
@@ -30,6 +45,10 @@ export function validateTriage(form, now = new Date()) {
     nome: form.nome.trim().split(/\s+/).length >= 2,
     nascimento: isValidPastDate(form.nascimento, now),
     sexo: !!form.sexo,
+    // menor de idade: responsável legal presente (nome, CPF próprio e parentesco)
+    respNome: !minor || form.respNome.trim().split(/\s+/).length >= 2,
+    respCpf: !minor || (isValidCpf(form.respCpf) && respCpf !== form.cpf.replace(/\D/g, "")),
+    respParentesco: !minor || !!form.respParentesco,
     queixa: form.queixa.trim().length >= 3,
     // opcional; se preenchido: data válida, não futura e após o nascimento
     inicioSintomas:
@@ -57,12 +76,15 @@ export function paError(form) {
 export function buildSteps(form, ok) {
   const historicoFilled = form.alergias.length + form.comorbidades.length + form.medicamentos.length > 0;
   const steps = [
-    { n: 1, title: "Identificação", target: "tg-identificacao", ok: ok.cpf && ok.cns && ok.nome && ok.nascimento && ok.sexo },
+    {
+      n: 1, title: "Identificação", target: "tg-identificacao",
+      ok: ok.cpf && ok.cns && ok.nome && ok.nascimento && ok.sexo && ok.respNome && ok.respCpf && ok.respParentesco,
+    },
     { n: 2, title: "Queixa principal", target: "tg-queixa", ok: ok.queixa && ok.inicioSintomas },
     { n: 3, title: "Histórico clínico", target: "tg-historico", ok: historicoFilled, optional: true },
     { n: 4, title: "Sinais vitais", target: "tg-sinais", ok: ok.paSis && ok.paDia && ok.fc && ok.spo2 && ok.temp && ok.peso && ok.altura },
     { n: 5, title: "Classificação de risco", target: "tg-triagem", ok: ok.risco },
-    { n: 6, title: "Observação", target: "tg-observacao", ok: form.observacoes.trim().length > 0, optional: true },
+    { n: 6, title: "Orientação", target: "tg-observacao", ok: form.orientacao.trim().length + form.observacoes.trim().length > 0, optional: true },
   ];
   const required = steps.filter((s) => !s.optional);
   const activeN = (required.find((s) => !s.ok) ?? steps[steps.length - 1]).n;

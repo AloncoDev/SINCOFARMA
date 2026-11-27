@@ -159,7 +159,7 @@ function PharmacyCard({ unit: u, index, onEdit, onDashboard }) {
           <h2>{u.name}</h2>
           <small className="mono">unidade:{u.id}</small>
         </div>
-        <button type="button" className="icon-btn" onClick={onEdit} aria-label={`Editar ${u.name}`} title="Editar nome e metas">
+        <button type="button" className="icon-btn" onClick={onEdit} aria-label={`Editar ${u.name}`} title="Editar dados da farmácia">
           <Pencil size={16} />
         </button>
       </header>

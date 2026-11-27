@@ -6,6 +6,8 @@ import * as device from "./device";
 
 const REGION = import.meta.env.VITE_COGNITO_REGION;
 const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID;
+// com o ID do user pool, o login é por SRP (a senha não sai do navegador); sem ele, USER_PASSWORD_AUTH
+const POOL_NAME = /^[\w-]+_(\w+)$/.exec(import.meta.env.VITE_COGNITO_USER_POOL_ID || "")?.[1] ?? null;
 // só para testes locais (servidor que simula o Cognito); em produção fica vazio
 const ENDPOINT = import.meta.env.VITE_COGNITO_ENDPOINT || `https://cognito-idp.${REGION}.amazonaws.com/`;
 
@@ -121,25 +123,30 @@ async function withDevice(tokens, { usernames, trust }) {
   }
 }
 
+/** Primeira etapa do login: senha (por SRP, se configurado), com ou sem aparelho lembrado. */
+function passwordStep(username, password, deviceKey) {
+  if (POOL_NAME) return device.passwordSrp(call, { clientId: CLIENT_ID, poolName: POOL_NAME, username, password, deviceKey });
+  return call("InitiateAuth", {
+    AuthFlow: "USER_PASSWORD_AUTH",
+    ClientId: CLIENT_ID,
+    AuthParameters: { USERNAME: username, PASSWORD: password, ...(deviceKey ? { DEVICE_KEY: deviceKey } : {}) },
+  });
+}
+
 export async function initiateAuth(identifier, password) {
   const username = toUsername(identifier);
   if (device.expired(username)) device.forget(username); // passou das 24 h: volta a pedir o código
   const trusted = device.trusted(username);
-  const params = { USERNAME: username, PASSWORD: password, ...(trusted ? { DEVICE_KEY: trusted.deviceKey } : {}) };
 
   let data;
   let viaDevice = !!trusted;
   try {
-    data = await call("InitiateAuth", { AuthFlow: "USER_PASSWORD_AUTH", ClientId: CLIENT_ID, AuthParameters: params });
+    data = await passwordStep(username, password, trusted?.deviceKey);
   } catch (err) {
     if (!trusted) throw err;
     // senha errada ou aparelho que o Cognito já esqueceu: tenta sem o aparelho.
     // Se falhar de novo, era a senha (o erro sobe e o aparelho continua confiável).
-    data = await call("InitiateAuth", {
-      AuthFlow: "USER_PASSWORD_AUTH",
-      ClientId: CLIENT_ID,
-      AuthParameters: { USERNAME: username, PASSWORD: password },
-    });
+    data = await passwordStep(username, password, null);
     device.forget(username);
     viaDevice = false;
   }

@@ -25,6 +25,7 @@ const SemAcesso = lazy(loaders.SemAcesso);
 const Usuarios = lazy(loaders.Usuarios);
 const MinhaConta = lazy(loaders.MinhaConta);
 const Ficha = lazy(loaders.Ficha);
+const Declaracao = lazy(loaders.Declaracao);
 const Auditoria = lazy(loaders.Auditoria);
 const PedidosLgpd = lazy(loaders.PedidosLgpd);
 const Privacidade = lazy(loaders.Privacidade);
@@ -98,6 +99,8 @@ const PAGINAS = [
   ["/privacidade-lgpd", <PedidosLgpd />],
   // rota com parâmetro: a permissão é a de "/ficha"
   ["/ficha/:id", <Ficha />, "/ficha"],
+  // Declaração de Serviço Farmacêutico (RDC 44/2009) do atendimento
+  ["/ficha/:id/declaracao", <Declaracao />, "/ficha"],
 ];
 
 export default function App() {

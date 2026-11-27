@@ -33,19 +33,22 @@ export default function Termos() {
           <ClipboardCheck size={18} aria-hidden="true" />
           <span>
             <b>Em resumo:</b> a conta é pessoal, o que você registra é responsabilidade profissional sua e todo
-            acesso fica registrado. Ao entrar no painel, você aceita estes termos.
+            acesso fica registrado. No primeiro acesso, e quando estes termos mudam, o painel pede o seu aceite e
+            registra a data.
           </span>
         </>
       }
     >
       <PolicySection id="painel" icon={Building2} title="O que é o painel" hint="Quem oferece e para quê." index={4}>
         <p>
-          O Painel Clínico é oferecido pelo <b>{PRIVACIDADE.controlador}</b> às farmácias associadas, para registrar o
-          atendimento farmacêutico, fazer a triagem com classificação de risco e encaminhar casos às unidades de saúde da rede pública, com guia de encaminhamento.
+          O Painel Clínico é oferecido pelo <b>{PRIVACIDADE.sincofarma}</b> às farmácias associadas, para registrar o
+          atendimento farmacêutico, classificar o risco, entregar ao paciente a declaração de serviço farmacêutico e
+          encaminhar casos às unidades de saúde da rede pública, com guia de encaminhamento.
         </p>
         <p className="policy-note">
           <Info size={15} aria-hidden="true" /> O painel apoia a decisão do profissional de saúde; não a substitui nem
-          dispensa a avaliação médica quando ela for necessária.
+          dispensa a avaliação médica quando ela for necessária. A classificação de risco serve para decidir a urgência
+          do encaminhamento e não é diagnóstico.
         </p>
       </PolicySection>
 
@@ -74,11 +77,14 @@ export default function Termos() {
             <h3>Ao registrar</h3>
             <ul>
               <li>Informar dados verdadeiros e completos sobre o paciente e o atendimento.</li>
+              <li>Atender paciente menor de 18 anos só com o responsável legal presente, e registrá-lo.</li>
+              <li>Entregar ao paciente a declaração de serviço farmacêutico (RDC 44/2009) e arquivar a 2ª via assinada.</li>
+              <li>Antes de encaminhar, explicar ao paciente para onde ele vai e que a guia pode ser consultada pelas unidades de saúde da rede.</li>
               <li>
                 Responder, conforme as normas do seu conselho profissional, pelas condutas, orientações e
                 encaminhamentos que registrar.
               </li>
-              <li>Corrigir um registro pelo próprio painel assim que perceber um erro.</li>
+              <li>Corrigir o desfecho pelo próprio painel assim que perceber um erro e avisar a administração de qualquer outro erro no registro.</li>
             </ul>
           </div>
           <div className="policy-box">
@@ -118,7 +124,8 @@ export default function Termos() {
       <PolicySection id="encerramento" icon={PowerOff} title="Suspensão e encerramento" hint="Quando o acesso é desativado." index={10}>
         <p>
           A administração do Sincofarma desativa o acesso quando termina o vínculo com a farmácia ou quando estes termos
-          não são cumpridos. Os atendimentos registrados continuam guardados pelo prazo exigido pelas normas sanitárias.
+          não são cumpridos. Os atendimentos registrados continuam guardados por {PRIVACIDADE.retencaoAnos} anos, o prazo
+          do prontuário de saúde.
         </p>
       </PolicySection>
 

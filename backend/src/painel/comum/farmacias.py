@@ -70,6 +70,9 @@ def _public(item: dict, stats: dict[str, dict], day: str, month: str, people: di
         "name": item.get("name") or unit,
         "monthGoal": int(item.get("monthGoal") or 0),
         "triageGoalMin": int(item.get("triageGoalMin") or 10),
+        "cnpj": item.get("cnpj") or "",
+        "address": item.get("address") or "",
+        "phone": item.get("phone") or "",
         "createdAt": item.get("createdAt"),
         "pharmacists": people,
         "today": {"total": int(d.get("total", 0)), "urgent": int(d.get("urgent", 0))},
@@ -107,6 +110,9 @@ def create(caller, data: dict) -> dict:
         "name": data["name"],
         "monthGoal": data["monthGoal"],
         "triageGoalMin": data["triageGoalMin"],
+        "cnpj": data.get("cnpj", ""),
+        "address": data.get("address", ""),
+        "phone": data.get("phone", ""),
         "createdAt": now.isoformat(),
     }
     try:

@@ -17,7 +17,7 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qsl, urlsplit
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 REGION = "sa-east-1"
 os.environ.update({
@@ -64,7 +64,7 @@ def preparar():
         UserPoolId=pool,
         ClientName="painel-web",
         GenerateSecret=False,
-        ExplicitAuthFlows=["ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
+        ExplicitAuthFlows=["ALLOW_USER_SRP_AUTH", "ALLOW_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
     )["UserPoolClient"]["ClientId"]
     # MFA obrigatório por app autenticador, como no template (o moto aceita qualquer código de 6 dígitos)
     idp.set_user_pool_mfa_config(UserPoolId=pool, SoftwareTokenMfaConfiguration={"Enabled": True}, MfaConfiguration="ON")
@@ -113,23 +113,60 @@ def main() -> int:
     with mock_aws():
         idp, pool, client_id = preparar()
         api = importlib.import_module("painel.api")
-        rotas = {
-            ("GET", "dashboard"): api.dashboard,
-            ("POST", "visits"): api.criar_visita,
-            ("PATCH", "visits"): api.atualizar_visita,
-            ("POST", "rnds"): api.sincronizar_rnds,
-            ("GET", "unidades"): api.listar_unidades,
-            ("GET", "medicos"): api.listar_medicos,
-            ("POST", "encaminhamentos"): api.criar_encaminhamento,
-            ("GET", "encaminhamentos"): api.listar_encaminhamentos,
-            ("GET", "encaminhamentos", "id"): api.ver_encaminhamento,
-            ("PATCH", "encaminhamentos", "id"): api.atualizar_encaminhamento,
-            ("GET", "usuarios"): api.listar_usuarios,
-            ("POST", "usuarios"): api.criar_usuario,
-            ("PATCH", "usuarios", "id"): api.atualizar_usuario,
-            ("GET", "visits", "id"): api.ver_visita,
-            ("GET", "auditoria"): api.listar_auditoria,
-        }
+        # mesmas rotas do template.yaml (método, caminho com {id}) -> handler
+        tabela = [
+            ("GET", "/dashboard", api.dashboard),
+            ("GET", "/unidades", api.listar_unidades),
+            ("GET", "/visits", api.listar_visitas),
+            ("POST", "/visits", api.criar_visita),
+            ("GET", "/visits/{id}", api.ver_visita),
+            ("PATCH", "/visits/{id}", api.atualizar_visita),
+            ("POST", "/rnds/sync", api.sincronizar_rnds),
+            ("GET", "/unidades-saude", api.listar_unidades_saude),
+            ("POST", "/unidades-saude", api.criar_unidade_saude),
+            ("PATCH", "/unidades-saude/{id}", api.atualizar_unidade_saude),
+            ("POST", "/encaminhamentos", api.criar_encaminhamento),
+            ("GET", "/encaminhamentos", api.listar_encaminhamentos),
+            ("GET", "/encaminhamentos/{id}", api.ver_encaminhamento),
+            ("PATCH", "/encaminhamentos/{id}", api.atualizar_encaminhamento),
+            ("POST", "/guias/busca", api.localizar_guia),
+            ("GET", "/usuarios", api.listar_usuarios),
+            ("POST", "/usuarios", api.criar_usuario),
+            ("PATCH", "/usuarios/{id}", api.atualizar_usuario),
+            ("GET", "/farmacias", api.listar_farmacias),
+            ("POST", "/farmacias", api.criar_farmacia),
+            ("PATCH", "/farmacias/{id}", api.atualizar_farmacia),
+            ("GET", "/gestao/atendimentos", api.acompanhar_atendimentos),
+            ("GET", "/gestao/atendimentos/{id}", api.acompanhar_atendimento),
+            ("GET", "/relatorios", api.relatorios_atendimentos),
+            ("GET", "/auditoria", api.listar_auditoria),
+            ("GET", "/me/dados", api.meus_dados),
+            ("GET", "/me/pedidos", api.listar_meus_pedidos),
+            ("POST", "/me/pedidos", api.criar_meu_pedido),
+            ("GET", "/me/termos", api.termos),
+            ("POST", "/me/termos", api.termos),
+            ("GET", "/lgpd/pedidos", api.listar_pedidos_lgpd),
+            ("PATCH", "/lgpd/pedidos/{id}", api.responder_pedido_lgpd),
+            ("POST", "/lgpd/pacientes", api.exportar_paciente),
+        ]
+
+        def rota(method: str, path: str):
+            """Handler e parâmetros do caminho, como o HTTP API entrega."""
+            partes = [p for p in path.split("/") if p]
+            for m, modelo, fn in tabela:
+                alvo = [p for p in modelo.split("/") if p]
+                if m != method or len(alvo) != len(partes):
+                    continue
+                params = {}
+                for a, b in zip(alvo, partes):
+                    if a.startswith("{"):
+                        params[a[1:-1]] = unquote(b)
+                    elif a != b:
+                        break
+                else:
+                    return fn, params
+            return None, {}
+
         cognito_ops = {
             "InitiateAuth": idp.initiate_auth,
             "RespondToAuthChallenge": idp.respond_to_auth_challenge,
@@ -181,10 +218,7 @@ def main() -> int:
                         e = err.response["Error"]
                         return self._send(400, json.dumps({"__type": e["Code"], "message": e.get("Message", "")}))
 
-                parts = [p for p in self.path.split("?")[0].split("/") if p]
-                base = (method, parts[0] if parts else "")
-                # /recurso/{id} tem handler próprio quando registrado com "id"
-                fn = rotas.get((*base, "id")) if len(parts) > 1 and (*base, "id") in rotas else rotas.get(base)
+                fn, path_params = rota(method, urlsplit(self.path).path)
                 if not fn:
                     return self._send(404, json.dumps({"message": "Rota inexistente."}))
                 claims = claims_do_token(idp, pool, self.headers.get("Authorization", ""))
@@ -193,7 +227,7 @@ def main() -> int:
                 event = {
                     "body": self._body() or None,
                     "isBase64Encoded": False,
-                    "pathParameters": {"id": parts[1]} if len(parts) > 1 else {},
+                    "pathParameters": path_params,
                     "queryStringParameters": dict(parse_qsl(urlsplit(self.path).query)) or None,
                     "requestContext": {"http": {"method": method}, "authorizer": {"jwt": {"claims": claims}}},
                 }

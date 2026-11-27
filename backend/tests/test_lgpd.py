@@ -28,7 +28,7 @@ def nova_visita(api):
 
 
 def encaminhar(api, visit):
-    body = {"visitId": visit["id"], "healthUnitId": "ubs-1-asa-sul", "reason": "Avaliar cefaleia", "priority": "rotina"}
+    body = {"visitId": visit["id"], "healthUnitId": "ubs-1-asa-sul", "reason": "Avaliar cefaleia", "priority": "rotina", "patientInformed": True}
     resp = api.criar_encaminhamento(event("POST", "/encaminhamentos", body, **ana()), None)
     assert resp["statusCode"] == 201
     return body_of(resp)
@@ -47,7 +47,7 @@ def responder(api, pid, body, **kw):
 
 
 def exportar(api, cpf, **kw):
-    return api.exportar_paciente(event("POST", "/lgpd/pacientes", {"cpf": cpf}, **kw), None)
+    return api.exportar_paciente(event("POST", "/lgpd/pacientes", {"cpf": cpf, "channel": "email", "reference": "E-mail do paciente de 20/11/2026"}, **kw), None)
 
 
 def auditoria_geral():
@@ -162,7 +162,8 @@ def test_administracao_exporta_os_dados_do_paciente(aws):
     assert atend["protocolo"] == visit["protocol"]
     assert atend["paciente"]["name"] == "Maria Teste"
     assert atend["farmacia"] == "Drogaria Planalto — Asa Sul"
-    assert [a["acao"] for a in atend["registroDeAlteracoes"]] == ["Atendimento registrado", "Encaminhado à unidade de saúde"]
+    # encaminhar grava, no mesmo instante, a mudança de desfecho e o encaminhamento
+    assert sorted(a["acao"] for a in atend["registroDeAlteracoes"]) == ["Atendimento registrado", "Desfecho ou Red Flag alterado", "Encaminhado à unidade de saúde"]
     [ref] = dados["encaminhamentos"]
     # com quem o dado foi compartilhado (art. 18, VII)
     assert ref["unidadeDeSaude"] == "UBS 1 Asa Sul" and ref["codigoGuia"].startswith("ENC-")

@@ -18,7 +18,7 @@ def as_doctor(username, unit=None):
 
 
 def send(api, visit_id, health=UBS, **kw):
-    body = {"visitId": visit_id, "healthUnitId": health, "reason": "Avaliar dor torácica atípica", "priority": "urgente"}
+    body = {"visitId": visit_id, "healthUnitId": health, "reason": "Avaliar dor torácica atípica", "priority": "urgente", "patientInformed": True}
     return api.criar_encaminhamento(event("POST", "/encaminhamentos", body, **kw), None)
 
 
@@ -78,7 +78,7 @@ def test_validacao_do_envio(aws):
     body = {"visitId": visit["id"], "healthUnitId": "X!", "reason": "ok"}
     resp = aws.criar_encaminhamento(event("POST", "/encaminhamentos", body), None)
     assert resp["statusCode"] == 422
-    assert set(body_of(resp)["details"]["fields"]) == {"healthUnitId", "reason"}
+    assert set(body_of(resp)["details"]["fields"]) == {"healthUnitId", "reason", "patientInformed"}
 
 
 def test_unidade_de_saude_inexistente(aws):
@@ -237,9 +237,54 @@ def test_ficha_do_encaminhamento_nao_muda_com_o_atendimento(aws):
     assert body_of(abrir(aws, ref["id"], **as_doctor(PAULO)))["clinical"]["notes"] == "Observação confidencial"
 
 
-def test_medico_de_outra_unidade_tambem_responde(aws):
-    """Se o paciente foi atendido em outra unidade, quem atendeu registra a resposta."""
+def test_outra_unidade_consulta_mas_nao_responde_nem_marca_lido(aws):
+    """Outra unidade acha a guia e lê a ficha, mas quem responde é a unidade de destino."""
     ref = new_referral(aws, UBS)
+    assert body_of(abrir(aws, ref["id"], **as_doctor(CARLA)))["status"] == "sent"
     resp = mudar(aws, ref["id"], {"status": "answered", "response": "Atendido na UPA; liberado com orientações."}, **as_doctor(CARLA))
-    assert resp["statusCode"] == 200
-    assert body_of(resp)["answeredUnit"] == "UPA Ceilândia"
+    assert resp["statusCode"] == 403
+    # a abertura por outra unidade fica no registro geral
+    items = boto3.resource("dynamodb", region_name=REGION).Table("painel-test").scan()["Items"]
+    assert "referral_open" in [i.get("action") for i in items if i["PK"].startswith("AUDIT#")]
+
+
+def test_encaminhar_muda_o_desfecho_e_os_contadores(aws):
+    visit = body_of(post_visit(aws))  # sai como "em andamento"
+    assert visit["status"] == "progress"
+    ref = body_of(send(aws, visit["id"]))
+    lista = body_of(aws.listar_visitas(event(path="/visits"), None))
+    assert next(v for v in lista["visits"] if v["id"] == visit["id"])["status"] == "referred"
+    assert lista["summary"]["referred"] == 1 and lista["summary"]["progress"] == 0
+    stats = [i for i in boto3.resource("dynamodb", region_name=REGION).Table("painel-test").scan()["Items"] if i["SK"] == "#STATS"]
+    assert all(int(s.get("referred", 0)) == 1 and int(s.get("progress", 0)) == 0 for s in stats)
+    # a guia leva quem fez o atendimento
+    assert ref["attendedBy"] == {"name": "Dra. Ana Souza", "crf": "4192"}
+
+
+def test_medico_sem_unidade_nao_busca_nem_abre(aws):
+    ref = new_referral(aws, UBS)
+    sem_unidade = {"user": PAULO, "groups": "[papel:medico]", "sub": doctor_sub(PAULO)}
+    assert buscar(aws, {"code": ref["code"]}, **sem_unidade)["statusCode"] == 403
+    assert abrir(aws, ref["id"], **sem_unidade)["statusCode"] == 404
+
+
+def test_filtro_por_situacao_nao_perde_os_antigos(aws, monkeypatch):
+    import painel.comum.encaminhamentos as enc_mod
+
+    monkeypatch.setattr(enc_mod, "LIST_LIMIT", 2)
+    antigo = new_referral(aws)  # o mais antigo, ainda sem leitura
+    for _ in range(3):
+        r = new_referral(aws)
+        mudar(aws, r["id"], {"status": "cancelled"})
+    enviados = listar(aws, query={"status": "sent"}, **as_doctor(PAULO))
+    assert [r["id"] for r in enviados] == [antigo["id"]]
+
+
+def test_limite_diario_de_buscas(aws, monkeypatch):
+    monkeypatch.setattr(aws, "LIMITE_BUSCAS_GUIA", 2)
+    for _ in range(2):
+        assert buscar(aws, {"cpf": "123.456.789-09"}, **as_doctor(PAULO))["statusCode"] == 200
+    resp = buscar(aws, {"cpf": "123.456.789-09"}, **as_doctor(PAULO))
+    assert resp["statusCode"] == 429
+    # é por usuário: outro médico continua buscando
+    assert buscar(aws, {"cpf": "123.456.789-09"}, **as_doctor(CARLA))["statusCode"] == 200

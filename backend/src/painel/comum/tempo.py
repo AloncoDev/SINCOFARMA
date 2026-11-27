@@ -6,6 +6,9 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo(os.environ.get("TZ_UNIDADE", "America/Sao_Paulo"))
 
+# fichas, encaminhamentos e suas trilhas: prazo do prontuário de saúde (Lei 13.787/2018, art. 6º)
+RETENCAO_ANOS = 20
+
 
 def now() -> datetime:
     return datetime.now(TZ)
@@ -46,6 +49,22 @@ def valid_day(text: str) -> bool:
         return True
     except (TypeError, ValueError):
         return False
+
+
+def expira_em(at: datetime | str, anos: int = RETENCAO_ANOS) -> int:
+    """Instante (epoch, segundos) em que o DynamoDB apaga o item sozinho (TTL `expiraEm`)."""
+    if isinstance(at, str):
+        at = datetime.fromisoformat(at)
+    try:
+        fim = at.replace(year=at.year + anos)
+    except ValueError:  # 29/02 em ano que não é bissexto
+        fim = at.replace(year=at.year + anos, day=28)
+    return int(fim.timestamp())
+
+
+def age(birth: date, on: date) -> int:
+    """Idade completa em `on`."""
+    return on.year - birth.year - ((on.month, on.day) < (birth.month, birth.day))
 
 
 def parse_br_date(text: str) -> date | None:

@@ -567,6 +567,19 @@
 .tg-check input:checked::after { transform: rotate(45deg) scale(1); }
 
 .tg-counter { margin: 8px 0 0; font-size: 12px; color: var(--muted); text-align: right; }
+.tg-counter + .tg-field { margin-top: 12px; }
+
+/* menor de idade: responsável legal */
+.tg-guardian { overflow: hidden; }
+.tg-guardian-note {
+  margin: 16px 0 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--warning, #d97706) 35%, transparent);
+  background: color-mix(in srgb, var(--warning, #d97706) 10%, transparent);
+  font-size: 13px;
+  line-height: 1.45;
+}
 
 /* ---------- rodapé de ações ---------- */
 .tg-footer {
@@ -666,3 +679,8 @@
 .tg-step--optional { opacity: 0.85; }
 .tg-step--optional .tg-step-state { color: #6b7a90; }
 .tg-step--optional::before { background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 10px); }
+
+/* telas até notebook: "Etapa 2" basta (a cor e o ícone do círculo já mostram o estado) */
+@media (max-width: 1500px) {
+  .tg-step-word { display: none; }
+}

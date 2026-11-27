@@ -64,6 +64,23 @@ Resources:
       AliasName: !Sub "alias/sincofarma-painel-${Stage}"
       TargetKeyId: !Ref ChaveDados
 
+  # HMAC do CPF no registro geral de auditoria: acha as exportações de um paciente sem guardar o CPF
+  ChaveAuditoria:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub "Sincofarma painel ${Stage} - HMAC da auditoria"
+      KeySpec: HMAC_256
+      KeyUsage: GENERATE_VERIFY_MAC
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AdministracaoPelaConta
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+
   # ---------------------------------------------------------------- dados
   TabelaPainel:
     Type: AWS::DynamoDB::Table
@@ -71,6 +88,10 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub "sincofarma-painel-${Stage}"
+      # prazo de guarda: itens com `expiraEm` (epoch) somem sozinhos (20 anos para fichas e encaminhamentos)
+      TimeToLiveSpecification:
+        AttributeName: expiraEm
+        Enabled: true
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - { AttributeName: PK, AttributeType: S }
@@ -92,6 +113,10 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub "sincofarma-clinico-${Stage}"
+      # prazo de guarda: itens com `expiraEm` (epoch) somem sozinhos (20 anos para fichas e encaminhamentos)
+      TimeToLiveSpecification:
+        AttributeName: expiraEm
+        Enabled: true
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - { AttributeName: PK, AttributeType: S }
@@ -157,6 +182,9 @@ Resources:
       UserPoolId: !Ref UserPool
       GenerateSecret: false # cliente público (SPA): sem segredo
       ExplicitAuthFlows:
+        # SRP: a senha não sai do navegador. USER_PASSWORD_AUTH fica só até o front com
+        # VITE_COGNITO_USER_POOL_ID estar no ar; depois, remova a linha e faça novo deploy.
+        - ALLOW_USER_SRP_AUTH
         - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
       PreventUserExistenceErrors: ENABLED
@@ -413,7 +441,7 @@ Resources:
               Action: [dynamodb:GetItem, dynamodb:Query, dynamodb:BatchGetItem] # código da guia, índice do paciente, encaminhamentos
               Resource: !GetAtt TabelaClinico.Arn
             - Effect: Allow
-              Action: dynamodb:PutItem # a busca fica no registro geral
+              Action: [dynamodb:PutItem, dynamodb:UpdateItem] # a busca fica no registro geral; limite diário por usuário
               Resource: !GetAtt TabelaPainel.Arn
             - Effect: Allow
               Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
@@ -434,7 +462,7 @@ Resources:
       Policies:
         - Statement:
             - Effect: Allow
-              Action: [dynamodb:GetItem, dynamodb:PutItem] # atendimento, farmácia e unidade de saúde; registro de auditoria geral
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem] # atendimento (vira "encaminhado") e contadores, farmácia, unidade de saúde; auditoria geral
               Resource: !GetAtt TabelaPainel.Arn
             - Effect: Allow
               Action: [dynamodb:GetItem, dynamodb:PutItem] # ficha (leitura) + encaminhamento e auditoria
@@ -1079,10 +1107,16 @@ Resources:
       FunctionName: !Sub "sincofarma-painel-${Stage}-exportar-paciente"
       Handler: painel.api.exportar_paciente
       Timeout: 30
+      Environment:
+        Variables:
+          CHAVE_AUDITORIA: !Ref ChaveAuditoria
       Policies:
         - Statement:
             - Effect: Allow
-              Action: [dynamodb:GetItem, dynamodb:PutItem] # resumo do atendimento e perfil da farmácia; registra a exportação
+              Action: [kms:GenerateMac] # impressão digital do CPF na auditoria
+              Resource: !GetAtt ChaveAuditoria.Arn
+            - Effect: Allow
+              Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:UpdateItem] # resumo do atendimento e perfil da farmácia; registra a exportação; limite diário
               Resource: !GetAtt TabelaPainel.Arn
             - Effect: Allow
               Action: [dynamodb:Query, dynamodb:GetItem] # índice PAC#, ficha, trilha e encaminhamentos
@@ -1130,6 +1164,42 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "/aws/lambda/${ExportarPacienteFn}"
+      RetentionInDays: !Ref LogRetentionDays
+
+  # aceite dos termos de uso: GET (última versão aceita) e POST (registra o aceite)
+  TermosFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "sincofarma-painel-${Stage}-termos"
+      Handler: painel.api.termos
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [dynamodb:Query, dynamodb:PutItem] # aceites; registro geral de auditoria
+              Resource: !GetAtt TabelaPainel.Arn
+            - Effect: Allow
+              Action: [kms:Decrypt, kms:GenerateDataKey, kms:DescribeKey]
+              Resource: !GetAtt ChaveDados.Arn
+              Condition:
+                StringEquals:
+                  kms:ViaService: !Sub "dynamodb.${AWS::Region}.amazonaws.com"
+      Events:
+        Ver:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Method: GET
+            Path: "/me/termos"
+        Aceitar:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref Api
+            Method: POST
+            Path: "/me/termos"
+  TermosLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${TermosFn}"
       RetentionInDays: !Ref LogRetentionDays
   # ---------------------------------------------------------------- tarefas agendadas
   EsquecerAparelhosFn:

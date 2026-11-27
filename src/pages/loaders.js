@@ -19,6 +19,7 @@ export const loaders = {
   Usuarios: () => import("./Usuarios/Usuarios"),
   MinhaConta: () => import("./MinhaConta/MinhaConta"),
   Ficha: () => import("./Ficha/Ficha"),
+  Declaracao: () => import("./Ficha/Declaracao"),
   Auditoria: () => import("./Auditoria/Auditoria"),
   PedidosLgpd: () => import("./PedidosLgpd/PedidosLgpd"),
   Privacidade: () => import("./Privacidade/Privacidade"),
@@ -26,4 +27,4 @@ export const loaders = {
 };
 
 /** Páginas internas (tudo menos o login). */
-export const appPages = [loaders.Dashboard, loaders.NovaTriagem, loaders.Atendimentos, loaders.Acompanhamento, loaders.AcompanhamentoDetalhe, loaders.Encaminhamentos, loaders.Encaminhamento, loaders.Guia, loaders.GuiaCodigo, loaders.UnidadesSaude, loaders.Farmacias, loaders.Relatorios, loaders.SemAcesso, loaders.Usuarios, loaders.MinhaConta, loaders.Ficha, loaders.Auditoria, loaders.PedidosLgpd];
+export const appPages = [loaders.Dashboard, loaders.NovaTriagem, loaders.Atendimentos, loaders.Acompanhamento, loaders.AcompanhamentoDetalhe, loaders.Encaminhamentos, loaders.Encaminhamento, loaders.Guia, loaders.GuiaCodigo, loaders.UnidadesSaude, loaders.Farmacias, loaders.Relatorios, loaders.SemAcesso, loaders.Usuarios, loaders.MinhaConta, loaders.Ficha, loaders.Declaracao, loaders.Auditoria, loaders.PedidosLgpd];

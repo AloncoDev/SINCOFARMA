@@ -95,6 +95,15 @@ def test_desativa_e_reativa(aws):
     assert body_of(mudar(aws, paulo["id"], {"enabled": True}))["enabled"] is True
 
 
+def test_admin_nao_muda_o_proprio_perfil(aws):
+    paulo_sub = doctor_sub("39053344705")
+    mudar(aws, paulo_sub, {"roles": ["admin"]})
+    como_paulo = {"groups": "[papel:admin]", "user": "39053344705", "sub": paulo_sub}
+    # não se dá perfil de médico/farmacêutico (acesso a pacientes) nem unidade
+    assert mudar(aws, paulo_sub, {"roles": ["admin", "medico"], "healthUnit": "ubs-1-asa-sul"}, **como_paulo)["statusCode"] == 422
+    assert mudar(aws, paulo_sub, {"healthUnit": "ubs-1-asa-sul"}, **como_paulo)["statusCode"] == 422
+
+
 def test_admin_nao_se_tranca_para_fora(aws):
     paulo_sub = doctor_sub("39053344705")
     mudar(aws, paulo_sub, {"roles": ["medico", "admin"], "healthUnit": "ubs-1-asa-sul"})

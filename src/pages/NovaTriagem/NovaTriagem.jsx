@@ -152,7 +152,7 @@ export default function NovaTriagem() {
           Cancelar
         </motion.button>
         {canRegister ? (
-          <p>Responsável técnico: {pharmacist}{crf}</p>
+          <p>Farmacêutico(a) que atende: {pharmacist}{crf}</p>
         ) : (
           <p role="note">Só farmacêuticos registram triagens. Este perfil vê o formulário sem enviar.</p>
         )}

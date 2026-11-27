@@ -20,9 +20,10 @@ from .comum.validacao import (
     VISIT_ID,
     validar_atualizacao,
     validar_busca_guia,
-    validar_cpf_titular,
+    validar_aceite_termos,
     validar_criacao,
     validar_encaminhamento,
+    validar_exportacao_paciente,
     validar_farmacia,
     validar_mudanca_encaminhamento,
     validar_mudanca_farmacia,
@@ -35,6 +36,9 @@ from .comum.validacao import (
 )
 
 HISTORY_DAYS = 28
+# por usuário, por dia: consultas que expõem dados de pacientes
+LIMITE_BUSCAS_GUIA = 150
+LIMITE_EXPORTACOES = 30
 UNIT_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 
 
@@ -249,6 +253,7 @@ def localizar_guia(event, _context):
     caller = caller_from_event(event)
     caller.exigir("localizar_guia")
     by, value = validar_busca_guia(parse_json(event))
+    repo.limite_diario(caller, "guias", LIMITE_BUSCAS_GUIA)
     return 200, {"referrals": enc.search(caller, by, value)}
 
 
@@ -446,7 +451,21 @@ def responder_pedido_lgpd(event, _context):
 
 @handler
 def exportar_paciente(event, _context):
-    """POST /lgpd/pacientes {cpf}: tudo sobre um paciente, a pedido dele (art. 18, II e V)."""
+    """POST /lgpd/pacientes {cpf, channel, reference}: tudo sobre um paciente, a pedido dele
+    (art. 18, II e V). Sem o pedido (canal e referência), não exporta."""
     caller = caller_from_event(event)
     caller.exigir("atender_titulares")
-    return 200, lgpd.dados_do_paciente(caller, validar_cpf_titular(parse_json(event)))
+    cpf, pedido = validar_exportacao_paciente(parse_json(event))
+    repo.limite_diario(caller, "lgpd-pacientes", LIMITE_EXPORTACOES)
+    return 200, lgpd.dados_do_paciente(caller, cpf, pedido)
+
+
+@handler
+def termos(event, _context):
+    """GET /me/termos: última versão dos termos de uso aceita por quem pede.
+    POST /me/termos {version}: registra o aceite (fica na auditoria)."""
+    caller = caller_from_event(event)
+    method = ((event.get("requestContext") or {}).get("http") or {}).get("method", "GET")
+    if method == "POST":
+        return 201, lgpd.aceitar_termos(caller, validar_aceite_termos(parse_json(event)))
+    return 200, {"accepted": lgpd.ultimo_aceite(caller.sub)}

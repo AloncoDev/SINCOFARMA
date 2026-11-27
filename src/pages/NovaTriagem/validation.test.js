@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateTriage, buildSteps, firstPending, paError, inRange } from "./validation";
+import { validateTriage, buildSteps, firstPending, paError, inRange, isMinor } from "./validation";
 import { buildTriageRecord, computeImc, formatSigns } from "./record";
 import { INITIAL } from "./constants";
 
@@ -96,5 +96,32 @@ describe("buildTriageRecord", () => {
     expect(formatSigns({ paSis: "120", paDia: "80", fc: "72", spo2: "", temp: "36,5" })).toBe("PA 120/80 mmHg · FC 72 bpm · Tax 36,5 °C");
     expect(computeImc("70", "175")).toBe("22,9");
     expect(computeImc("", "175")).toBeNull();
+  });
+});
+
+describe("paciente menor de idade", () => {
+  const crianca = { ...valid, nascimento: "10/05/2016" };
+
+  it("exige o responsável legal com CPF próprio e parentesco", () => {
+    expect(isMinor(crianca, now)).toBe(true);
+    expect(isMinor(valid, now)).toBe(false);
+    const ok = validateTriage(crianca, now);
+    expect([ok.respNome, ok.respCpf, ok.respParentesco]).toEqual([false, false, false]);
+    expect(validateTriage({ ...crianca, respCpf: crianca.cpf }, now).respCpf).toBe(false);
+    const completo = { ...crianca, respNome: "João Teste", respCpf: "123.456.789-09", respParentesco: "pai" };
+    expect(Object.values(validateTriage(completo, now)).every(Boolean)).toBe(true);
+  });
+
+  it("faz 18 anos no dia do aniversário", () => {
+    expect(isMinor({ ...valid, nascimento: "28/10/2008" }, now)).toBe(false);
+    expect(isMinor({ ...valid, nascimento: "29/10/2008" }, now)).toBe(true);
+  });
+
+  it("o registro leva o responsável e a orientação; adulto vai sem responsável", () => {
+    const completo = { ...crianca, respNome: "João  Teste", respCpf: "123.456.789-09", respParentesco: "pai", orientacao: " Retornar em 7 dias " };
+    const { clinical } = buildTriageRecord(completo, { pharmacist: "Ana", protocol: "X" }, now);
+    expect(clinical.guardian).toEqual({ name: "João Teste", cpf: "12345678909", relation: "pai" });
+    expect(clinical.guidance).toBe("Retornar em 7 dias");
+    expect(buildTriageRecord(valid, { pharmacist: "Ana", protocol: "X" }, now).clinical.guardian).toBeNull();
   });
 });

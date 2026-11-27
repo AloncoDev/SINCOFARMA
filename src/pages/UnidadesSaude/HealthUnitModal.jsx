@@ -6,18 +6,7 @@ import { repository } from "../../data";
 import { useClinic } from "../../contexts/clinic";
 import { HEALTH_KINDS } from "../../data/catalog";
 import { useFocusTrap, useModalBackdrop } from "../../hooks/useFocusTrap";
-
-/** "UBS 1 Asa Sul" -> "ubs-1-asa-sul" (até 40 caracteres) */
-function slug(text) {
-  return text
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40)
-    .replace(/-+$/, "");
-}
+import { slug } from "../../utils/slug";
 
 /** Cadastro (unit = null) ou edição de nome, tipo e região de uma unidade de saúde. */
 export default function HealthUnitModal({ open, unit, taken, onClose, onSaved }) {

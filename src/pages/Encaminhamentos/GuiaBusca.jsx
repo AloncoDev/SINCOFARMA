@@ -4,7 +4,7 @@ import { X, ScanSearch, AlertCircle, Hash, IdCard, QrCode, ChevronRight, SearchX
 import { repository } from "../../data";
 import { REFERRAL_STATUS } from "../../data/catalog";
 import { useFocusTrap, useModalBackdrop } from "../../hooks/useFocusTrap";
-import { isValidCpf } from "../../utils/cpf";
+import { isValidCpf, maskCpf } from "../../utils/cpf";
 import { codeFromQr, normalizeCode } from "../../utils/guia";
 
 // a câmera e o jsQR só carregam quando alguém abre a aba do QR
@@ -15,12 +15,6 @@ const TABS = [
   { key: "cpf", label: "CPF do paciente", icon: IdCard },
   { key: "qr", label: "Ler QR code", icon: QrCode },
 ];
-
-/** "000.000.000-00" enquanto digita */
-function maskCpf(v) {
-  const d = v.replace(/\D/g, "").slice(0, 11);
-  return d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1-$2");
-}
 
 const when = (iso) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 

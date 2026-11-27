@@ -32,7 +32,7 @@ export function profileFrom(idToken) {
   const c = decode(idToken);
   return {
     name: c.name || c["cognito:username"] || "Farmacêutico(a)",
-    crf: c["custom:crf"] ? `CRF-DF ${c["custom:crf"]} · RT` : undefined,
+    crf: c["custom:crf"] ? `CRF-DF ${c["custom:crf"]}` : undefined,
     sub: c.sub,
     ...accessFrom(c["cognito:groups"]),
   };

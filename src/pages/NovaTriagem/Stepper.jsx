@@ -43,7 +43,10 @@ export default function Stepper({ steps, onGo }) {
                 </motion.span>
               </AnimatePresence>
               <span>
-                <span className="tg-step-state">Etapa {s.n} · {STEP_STATUS_LABEL[s.status]}</span>
+                <span className="tg-step-state">
+                  Etapa {s.n}
+                  <span className="tg-step-word"> · {STEP_STATUS_LABEL[s.status]}</span>
+                </span>
                 <span className="tg-step-title">{s.title}</span>
               </span>
             </motion.button>
